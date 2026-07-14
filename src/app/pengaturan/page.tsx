@@ -12,6 +12,7 @@ import { PrinterSettingsSection } from "@/components/pengaturan/PrinterSettingsS
 import { BackupRestoreSection } from "@/components/pengaturan/BackupRestoreSection";
 import { AboutSection } from "@/components/pengaturan/AboutSection";
 import { SyncSection } from "@/components/pengaturan/SyncSection";
+import { DangerZoneSection } from "@/components/pengaturan/DangerZoneSection";
 import { ImportDialog } from "@/components/produk/ImportDialog";
 import { useSettings, updateSettings } from "@/hooks/useSettings";
 import type { Settings } from "@/types";
@@ -47,6 +48,7 @@ export default function PengaturanPage() {
 
             <SyncSection />
             <BackupRestoreSection />
+            <DangerZoneSection />
             <AboutSection />
           </>
         ) : (

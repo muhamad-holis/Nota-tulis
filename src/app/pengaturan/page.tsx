@@ -11,6 +11,7 @@ import { ReceiptTextSection } from "@/components/pengaturan/ReceiptTextSection";
 import { PrinterSettingsSection } from "@/components/pengaturan/PrinterSettingsSection";
 import { BackupRestoreSection } from "@/components/pengaturan/BackupRestoreSection";
 import { AboutSection } from "@/components/pengaturan/AboutSection";
+import { SyncSection } from "@/components/pengaturan/SyncSection";
 import { ImportDialog } from "@/components/produk/ImportDialog";
 import { useSettings, updateSettings } from "@/hooks/useSettings";
 import type { Settings } from "@/types";
@@ -44,6 +45,7 @@ export default function PengaturanPage() {
               </Button>
             </SettingsSection>
 
+            <SyncSection />
             <BackupRestoreSection />
             <AboutSection />
           </>

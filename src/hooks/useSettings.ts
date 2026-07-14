@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
 import { db, ensureSettingsExist } from "@/database/schema";
+import { enqueueSync } from "@/lib/sync";
 import type { Settings } from "@/types";
 
 export function useSettings() {
@@ -16,5 +17,7 @@ export function useSettings() {
 }
 
 export async function updateSettings(id: number, data: Partial<Settings>) {
-  return db.settings.update(id, data);
+  const result = await db.settings.update(id, data);
+  enqueueSync("settings", "singleton");
+  return result;
 }

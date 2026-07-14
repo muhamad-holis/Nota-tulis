@@ -2,6 +2,7 @@
 
 import { useLiveQuery } from "dexie-react-hooks";
 import { db } from "@/database/schema";
+import { enqueueSync } from "@/lib/sync";
 import type { Product } from "@/types";
 import type { ParsedProductRow } from "@/services/csvService";
 
@@ -35,17 +36,26 @@ export function useProductSuggestions(query: string, limit = 5) {
   return suggestions ?? [];
 }
 
-export async function addProduct(data: Omit<Product, "id" | "createdAt" | "updatedAt">) {
+export async function addProduct(data: Omit<Product, "id" | "createdAt" | "updatedAt" | "uuid">) {
   const now = Date.now();
-  return db.products.add({ ...data, createdAt: now, updatedAt: now });
+  const uuid = crypto.randomUUID();
+  const id = await db.products.add({ ...data, uuid, createdAt: now, updatedAt: now });
+  enqueueSync("products", uuid);
+  return id;
 }
 
 export async function updateProduct(id: number, data: Partial<Product>) {
-  return db.products.update(id, { ...data, updatedAt: Date.now() });
+  const result = await db.products.update(id, { ...data, updatedAt: Date.now() });
+  const p = await db.products.get(id);
+  if (p?.uuid) enqueueSync("products", p.uuid);
+  return result;
 }
 
 export async function deleteProduct(id: number) {
-  return db.products.delete(id);
+  const p = await db.products.get(id);
+  const result = await db.products.delete(id);
+  if (p?.uuid) enqueueSync("products", p.uuid, "delete");
+  return result;
 }
 
 export async function importProducts(rows: ParsedProductRow[], mode: "add" | "replace") {

@@ -4,6 +4,7 @@ import { useCallback, useMemo, useState } from "react";
 import { db, nextNotaNumber } from "@/database/schema";
 import type { NotaItem } from "@/types";
 import { generateItemId } from "@/lib/utils";
+import { enqueueSync } from "@/lib/sync";
 
 function emptyRow(): NotaItem {
   return { id: generateItemId(), name: "", price: 0, qty: 1 };
@@ -54,13 +55,18 @@ export function useNota() {
       throw new Error("Nota masih kosong.");
     }
     const number = await nextNotaNumber();
+    const now = Date.now();
+    const uuid = crypto.randomUUID();
     const nota = {
+      uuid,
       number,
-      date: Date.now(),
+      date: now,
       items: validItems,
       total: validItems.reduce((sum, item) => sum + item.price * item.qty, 0),
+      updatedAt: now,
     };
     const id = await db.notas.add(nota);
+    enqueueSync("notas", uuid);
     return { ...nota, id };
   }, [validItems]);
 

@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import type { ReactNode } from "react";
 import { Toaster } from "@/components/ui/Toaster";
 import { ServiceWorkerRegister } from "@/components/layout/ServiceWorkerRegister";
+import { SupabaseAuthProvider } from "@/components/layout/SupabaseAuthProvider";
 import "./globals.css";
 
 export const dynamic = "force-dynamic";
@@ -36,6 +37,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         {children}
         <Toaster />
         <ServiceWorkerRegister />
+        <SupabaseAuthProvider />
       </body>
     </html>
   );

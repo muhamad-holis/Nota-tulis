@@ -1,5 +1,6 @@
 export interface Product {
   id?: number;
+  uuid?: string;
   name: string;
   price: number;
   category?: string;
@@ -16,10 +17,12 @@ export interface NotaItem {
 
 export interface Nota {
   id?: number;
+  uuid?: string;
   number: string;
   date: number;
   items: NotaItem[];
   total: number;
+  updatedAt?: number;
 }
 
 export type PaperSize = "58" | "80";

@@ -1,10 +1,25 @@
 import Dexie, { type Table } from "dexie";
 import type { Product, Nota, Settings } from "@/types";
 
+export interface MetaRow {
+  key: string;
+  value: string;
+}
+
+export interface SyncQueueItem {
+  id?: number;
+  table: "products" | "notas" | "settings";
+  op: "upsert" | "delete";
+  uuid: string;
+  createdAt: number;
+}
+
 export class NotaTulisDB extends Dexie {
   products!: Table<Product, number>;
   notas!: Table<Nota, number>;
   settings!: Table<Settings, number>;
+  meta!: Table<MetaRow, string>;
+  syncQueue!: Table<SyncQueueItem, number>;
 
   constructor() {
     super("nota-tulis-db");
@@ -13,6 +28,29 @@ export class NotaTulisDB extends Dexie {
       notas: "++id, number, date",
       settings: "++id",
     });
+    this.version(2)
+      .stores({
+        products: "++id, uuid, name, category, createdAt",
+        notas: "++id, uuid, number, date",
+        settings: "++id",
+        meta: "key",
+        syncQueue: "++id, table, uuid",
+      })
+      .upgrade(async (tx) => {
+        await tx
+          .table("products")
+          .toCollection()
+          .modify((p: Product) => {
+            if (!p.uuid) p.uuid = crypto.randomUUID();
+          });
+        await tx
+          .table("notas")
+          .toCollection()
+          .modify((n: Nota) => {
+            if (!n.uuid) n.uuid = crypto.randomUUID();
+            if (!n.updatedAt) n.updatedAt = n.date;
+          });
+      });
   }
 }
 

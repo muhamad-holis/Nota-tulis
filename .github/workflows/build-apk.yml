@@ -52,7 +52,7 @@ jobs:
           KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
-          yes | bubblewrap build \
+          printf 'y\n' | bubblewrap build \
             --skipPwaValidation \
             --signingKeyPath android.keystore \
             --alias nota-tulis \

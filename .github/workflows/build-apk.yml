@@ -41,9 +41,8 @@ jobs:
           KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
-          echo "n" | bubblewrap build \
+          printf 'n\n%s\n' "$JAVA_HOME" | bubblewrap build \
             --skipPwaValidation \
-            --skipJdkInstall \
             --signingKeyPath android.keystore \
             --alias nota-tulis \
             --password "$KEYSTORE_PASSWORD" \

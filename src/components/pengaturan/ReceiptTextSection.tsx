@@ -1,7 +1,7 @@
 "use client";
 
 import { SettingsSection } from "./SettingsSection";
-import { Textarea } from "@/components/ui/Input";
+import { LiveField } from "@/components/ui/LiveField";
 import type { Settings } from "@/types";
 
 interface ReceiptTextSectionProps {
@@ -13,19 +13,21 @@ export function ReceiptTextSection({ settings, onUpdate }: ReceiptTextSectionPro
   return (
     <>
       <SettingsSection title="Tulisan Atas Nota">
-        <Textarea
+        <LiveField
+          multiline
           rows={2}
           value={settings.headerText}
-          onChange={(e) => onUpdate({ headerText: e.target.value })}
+          onCommit={(v) => onUpdate({ headerText: v })}
           placeholder={"TERIMA KASIH\nSELAMAT DATANG"}
         />
       </SettingsSection>
 
       <SettingsSection title="Tulisan Bawah Nota">
-        <Textarea
+        <LiveField
+          multiline
           rows={2}
           value={settings.footerText}
-          onChange={(e) => onUpdate({ footerText: e.target.value })}
+          onCommit={(v) => onUpdate({ footerText: v })}
           placeholder="Terima kasih atas kepercayaan Anda."
         />
       </SettingsSection>

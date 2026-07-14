@@ -4,7 +4,7 @@ import { useRef, useState } from "react";
 import type { ChangeEvent } from "react";
 import { ImagePlus } from "lucide-react";
 import { SettingsSection } from "./SettingsSection";
-import { Input } from "@/components/ui/Input";
+import { LiveField } from "@/components/ui/LiveField";
 import { cropImageToSquareDataUrl } from "@/lib/image";
 import { showToast } from "@/lib/toast";
 import type { Settings } from "@/types";
@@ -63,15 +63,15 @@ export function StoreInfoSection({ settings, onUpdate }: StoreInfoSectionProps) 
       <div className="space-y-3">
         <div>
           <label className="mb-1 block text-xs font-medium text-slate-500">Nama Toko</label>
-          <Input value={settings.storeName} onChange={(e) => onUpdate({ storeName: e.target.value })} />
+          <LiveField value={settings.storeName} onCommit={(v) => onUpdate({ storeName: v })} />
         </div>
         <div>
           <label className="mb-1 block text-xs font-medium text-slate-500">Alamat</label>
-          <Input value={settings.address} onChange={(e) => onUpdate({ address: e.target.value })} />
+          <LiveField value={settings.address} onCommit={(v) => onUpdate({ address: v })} />
         </div>
         <div>
           <label className="mb-1 block text-xs font-medium text-slate-500">Nomor HP</label>
-          <Input value={settings.phone} onChange={(e) => onUpdate({ phone: e.target.value })} />
+          <LiveField value={settings.phone} onCommit={(v) => onUpdate({ phone: v })} />
         </div>
       </div>
     </SettingsSection>

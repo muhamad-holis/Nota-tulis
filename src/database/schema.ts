@@ -18,11 +18,8 @@ export class NotaTulisDB extends Dexie {
 
 export const db = new NotaTulisDB();
 
-export async function getOrCreateSettings(): Promise<Settings> {
-  const existing = await db.settings.toCollection().first();
-  if (existing) return existing;
-
-  const defaultSettings: Settings = {
+function defaultSettingsValue(): Settings {
+  return {
     storeName: "Toko Saya",
     address: "",
     phone: "",
@@ -33,6 +30,20 @@ export async function getOrCreateSettings(): Promise<Settings> {
     printer: null,
     lastNotaNumber: 0,
   };
+}
+
+// WRITE — jangan pernah dipanggil dari dalam useLiveQuery querier.
+export async function ensureSettingsExist(): Promise<void> {
+  const existing = await db.settings.toCollection().first();
+  if (existing) return;
+  await db.settings.add(defaultSettingsValue());
+}
+
+// WRITE + READ — aman dipakai di luar liveQuery (mis. saat saveNota()).
+export async function getOrCreateSettings(): Promise<Settings> {
+  const existing = await db.settings.toCollection().first();
+  if (existing) return existing;
+  const defaultSettings = defaultSettingsValue();
   const id = await db.settings.add(defaultSettings);
   return { ...defaultSettings, id };
 }

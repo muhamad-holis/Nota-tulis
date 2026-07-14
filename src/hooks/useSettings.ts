@@ -1,13 +1,16 @@
 "use client";
 
+import { useEffect } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
-import { db, getOrCreateSettings } from "@/database/schema";
+import { db, ensureSettingsExist } from "@/database/schema";
 import type { Settings } from "@/types";
 
 export function useSettings() {
-  const settings = useLiveQuery(async () => {
-    return getOrCreateSettings();
+  useEffect(() => {
+    ensureSettingsExist();
   }, []);
+
+  const settings = useLiveQuery(() => db.settings.toCollection().first(), []);
 
   return settings;
 }

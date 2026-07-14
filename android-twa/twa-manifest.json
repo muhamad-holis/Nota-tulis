@@ -1,0 +1,32 @@
+{
+  "packageId": "com.notatulis.app",
+  "host": "nota-tulis.vercel.app",
+  "name": "Nota Tulis",
+  "launcherName": "Nota Tulis",
+  "display": "standalone",
+  "orientation": "portrait",
+  "themeColor": "#2563EB",
+  "navigationColor": "#2563EB",
+  "navigationColorDark": "#2563EB",
+  "backgroundColor": "#FFFFFF",
+  "enableNotifications": false,
+  "startUrl": "/",
+  "iconUrl": "https://nota-tulis.vercel.app/icons/icon-512.png",
+  "maskableIconUrl": "https://nota-tulis.vercel.app/icons/icon-maskable-512.png",
+  "splashScreenFadeOutDuration": 300,
+  "appVersionName": "1.0.0",
+  "appVersionCode": 1,
+  "signingKey": {
+    "path": "./android.keystore",
+    "alias": "nota-tulis"
+  },
+  "shortcuts": [],
+  "generatorApp": "bubblewrap-cli",
+  "webManifestUrl": "https://nota-tulis.vercel.app/manifest.json",
+  "fallbackType": "customtabs",
+  "features": {},
+  "alphaDependencies": { "enabled": false },
+  "enableSiteSettingsShortcut": true,
+  "isChromeOSOnly": false,
+  "isMetaQuest": false
+}

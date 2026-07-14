@@ -1,0 +1,51 @@
+name: Build Android APK (TWA)
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "apk-v*"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Bubblewrap CLI
+        run: npm install -g @bubblewrap/cli
+
+      - name: Restore keystore
+        run: echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 -d > android-twa/android.keystore
+
+      - name: Build signed APK & AAB
+        working-directory: android-twa
+        env:
+          KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          bubblewrap build \
+            --skipPwaValidation \
+            --password="$KEYSTORE_PASSWORD" \
+            --alias-password="$KEY_PASSWORD"
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: nota-tulis-apk
+          path: android-twa/app-release-signed.apk
+
+      - name: Upload AAB artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: nota-tulis-aab
+          path: android-twa/app-release-bundle.aab

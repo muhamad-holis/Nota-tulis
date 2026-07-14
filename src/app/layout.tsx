@@ -4,6 +4,8 @@ import { Toaster } from "@/components/ui/Toaster";
 import { ServiceWorkerRegister } from "@/components/layout/ServiceWorkerRegister";
 import "./globals.css";
 
+export const dynamic = "force-dynamic";
+
 export const metadata: Metadata = {
   title: "Nota Tulis",
   description: "Buat nota belanja secepat mungkin, 100% offline. Untuk warung, toko kelontong, dan UMKM.",

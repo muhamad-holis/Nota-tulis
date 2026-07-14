@@ -96,10 +96,15 @@ export function NotaRow({
 
         <input
           id={`qty-input-${item.id}`}
-          value={item.qty}
+          value={item.qty === 0 ? "" : item.qty}
           onChange={(e) => onUpdate({ qty: parseInt(e.target.value.replace(/[^0-9]/g, ""), 10) || 0 })}
+          onFocus={(e) => e.target.select()}
+          onBlur={() => {
+            if (!item.qty) onUpdate({ qty: 1 });
+          }}
           onKeyDown={handleQtyKeyDown}
           inputMode="numeric"
+          placeholder="1"
           className="w-full rounded-lg bg-slate-50 px-2 py-1.5 text-center text-sm text-slate-700 outline-none focus:ring-2 focus:ring-brand-100"
         />
 

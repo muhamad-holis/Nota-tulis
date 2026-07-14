@@ -54,15 +54,13 @@ jobs:
       - name: Build signed APK & AAB
         working-directory: android-twa
         env:
-          KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
-          KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          BUBBLEWRAP_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          BUBBLEWRAP_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
           bubblewrap build \
             --skipPwaValidation \
             --signingKeyPath android.keystore \
-            --alias nota-tulis \
-            --password "$KEYSTORE_PASSWORD" \
-            --alias-password "$KEY_PASSWORD"
+            --signingKeyAlias nota-tulis
 
       - name: Upload APK
         uses: actions/upload-artifact@v4

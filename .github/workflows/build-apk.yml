@@ -46,13 +46,18 @@ jobs:
         run: |
           echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 -d > android-twa/android.keystore
 
+      - name: Generate Android project
+        working-directory: android-twa
+        run: |
+          bubblewrap update --skipVersionUpgrade
+
       - name: Build signed APK & AAB
         working-directory: android-twa
         env:
           KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
-          printf 'y\n' | bubblewrap build \
+          bubblewrap build \
             --skipPwaValidation \
             --signingKeyPath android.keystore \
             --alias nota-tulis \

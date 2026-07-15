@@ -69,6 +69,13 @@ export function NotaRow({
     }
   }
 
+  function handleTotalKeyDown(e: KeyboardEvent<HTMLInputElement>) {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      onEnterQty();
+    }
+  }
+
   async function handleDragEnd(_: unknown, info: { offset: { x: number } }) {
     if (info.offset.x < -80) {
       onRemove();
@@ -129,6 +136,7 @@ export function NotaRow({
           value={totalText}
           onChange={(e) => handleTotalChange(e.target.value)}
           onFocus={(e) => e.target.select()}
+          onKeyDown={handleTotalKeyDown}
           inputMode="numeric"
           placeholder="0"
           title="Otomatis dari Harga x Qty, atau ketik manual untuk mengoverride"

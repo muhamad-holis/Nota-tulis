@@ -169,15 +169,21 @@ class PrinterService {
 
     if (settings.storeName) {
       push(CMD.BOLD_ON);
-      line(settings.storeName);
+      this.wrapText(settings.storeName, charWidth).forEach((l) => line(l));
       push(CMD.BOLD_OFF);
     }
-    if (settings.address) line(settings.address);
-    if (settings.phone) line(settings.phone);
+    if (settings.address) {
+      this.wrapText(settings.address, charWidth).forEach((l) => line(l));
+    }
+    if (settings.phone) {
+      this.wrapText(settings.phone, charWidth).forEach((l) => line(l));
+    }
 
     line(divider);
     if (settings.headerText) {
-      settings.headerText.split("\n").forEach((l) => line(l));
+      settings.headerText.split("\n").forEach((l) => {
+        this.wrapText(l, charWidth).forEach((wrapped) => line(wrapped));
+      });
       line(divider);
     }
 

@@ -31,6 +31,7 @@ export function ReceiptPreview({ nota, settings }: ReceiptPreviewProps) {
       <p>NOTA BELANJA</p>
       <p>{formatDateTime(nota.date)}</p>
       <p>No. {nota.number}</p>
+      {nota.customerName && <p>Pelanggan: {nota.customerName}</p>}
 
       <div className="my-2 border-t border-dashed border-slate-400" />
 

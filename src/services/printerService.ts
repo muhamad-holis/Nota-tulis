@@ -2,6 +2,7 @@
 
 import type { Nota, Settings } from "@/types";
 import { formatDateTime, formatRupiah } from "@/lib/utils";
+import { imageToMonoRaster } from "@/lib/image";
 
 // ESC/POS command bytes
 const ESC = 0x1b;
@@ -98,6 +99,15 @@ class PrinterService {
     return Array.from(new TextEncoder().encode(text));
   }
 
+  private rasterImageCommand(widthPx: number, heightPx: number, data: number[]): number[] {
+    const bytesPerRow = widthPx / 8;
+    const xL = bytesPerRow & 0xff;
+    const xH = (bytesPerRow >> 8) & 0xff;
+    const yL = heightPx & 0xff;
+    const yH = (heightPx >> 8) & 0xff;
+    return [GS, 0x76, 0x30, 0x00, xL, xH, yL, yH, ...data];
+  }
+
   private padColumns(cols: string[], widths: number[]): string {
     return cols
       .map((col, i) => {
@@ -108,7 +118,7 @@ class PrinterService {
       .join("");
   }
 
-  buildReceiptBytes(nota: Nota, settings: Settings): number[] {
+  async buildReceiptBytes(nota: Nota, settings: Settings): Promise<number[]> {
     const bytes: number[] = [];
     const push = (arr: number[]) => bytes.push(...arr);
     const line = (text = "") => push(this.textToBytes(text + "\n"));
@@ -119,8 +129,21 @@ class PrinterService {
     push(CMD.INIT);
     push(CMD.ALIGN_CENTER);
 
+    if (settings.logo) {
+      try {
+        const maxWidthPx = isWide ? 384 : 300;
+        const raster = await imageToMonoRaster(settings.logo, maxWidthPx);
+        push(this.rasterImageCommand(raster.widthPx, raster.heightPx, raster.data));
+        line();
+      } catch {
+        // Kalau gagal konversi logo, lanjutkan cetak nota tanpa logo.
+      }
+    }
+
     if (settings.storeName) {
+      push(CMD.BOLD_ON);
       line(settings.storeName);
+      push(CMD.BOLD_OFF);
     }
     if (settings.address) line(settings.address);
     if (settings.phone) line(settings.phone);
@@ -159,7 +182,9 @@ class PrinterService {
     }
 
     line(divider);
+    push(CMD.BOLD_ON);
     line(`TOTAL ${formatRupiah(nota.total)}`);
+    push(CMD.BOLD_OFF);
     line(divider);
 
     if (settings.footerText) {
@@ -176,7 +201,7 @@ class PrinterService {
   }
 
   async printReceipt(nota: Nota, settings: Settings) {
-    const bytes = this.buildReceiptBytes(nota, settings);
+    const bytes = await this.buildReceiptBytes(nota, settings);
     await this.write(bytes);
   }
 

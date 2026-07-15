@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Header } from "@/components/layout/Header";
 import { BottomNav } from "@/components/layout/BottomNav";
 import { NotaTable } from "@/components/nota/NotaTable";
@@ -28,6 +28,7 @@ export default function NotaBaruPage() {
   const settings = useSettings();
   const { print, printing, isSupported } = useBluetoothPrinter();
   const [saving, setSaving] = useState(false);
+  const isBusyRef = useRef(false);
 
   function handleEnterName(id: string) {
     document.getElementById(`price-input-${id}`)?.focus();
@@ -50,6 +51,8 @@ export default function NotaBaruPage() {
   }
 
   async function handleSave() {
+    if (isBusyRef.current) return;
+    isBusyRef.current = true;
     setSaving(true);
     try {
       await saveNota();
@@ -59,6 +62,7 @@ export default function NotaBaruPage() {
       showToast(err instanceof Error ? err.message : "Gagal menyimpan nota", "error");
     } finally {
       setSaving(false);
+      isBusyRef.current = false;
     }
   }
 
@@ -68,6 +72,8 @@ export default function NotaBaruPage() {
       showToast("Bluetooth tidak didukung di perangkat ini", "error");
       return;
     }
+    if (isBusyRef.current) return;
+    isBusyRef.current = true;
     try {
       const saved = await saveNota();
       const ok = await print(saved, settings);
@@ -79,6 +85,8 @@ export default function NotaBaruPage() {
       }
     } catch (err) {
       showToast(err instanceof Error ? err.message : "Gagal mencetak nota", "error");
+    } finally {
+      isBusyRef.current = false;
     }
   }
 
@@ -118,8 +126,8 @@ export default function NotaBaruPage() {
           onSave={handleSave}
           onPrint={handlePrint}
           onNewNota={handleNewNota}
-          saving={saving}
-          printing={printing}
+          saving={saving || printing}
+          printing={printing || saving}
         />
       </div>
 

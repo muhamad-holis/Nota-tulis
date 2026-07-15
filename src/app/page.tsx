@@ -6,14 +6,25 @@ import { BottomNav } from "@/components/layout/BottomNav";
 import { NotaTable } from "@/components/nota/NotaTable";
 import { TotalBar } from "@/components/nota/TotalBar";
 import { ActionButtons } from "@/components/nota/ActionButtons";
+import { Input } from "@/components/ui/Input";
 import { useNota } from "@/hooks/useNota";
 import { useSettings } from "@/hooks/useSettings";
 import { useBluetoothPrinter } from "@/hooks/useBluetoothPrinter";
 import { showToast } from "@/lib/toast";
 
 export default function NotaBaruPage() {
-  const { items, total, updateItem, removeItem, addRow, ensureTrailingRow, reset, saveNota } =
-    useNota();
+  const {
+    items,
+    total,
+    customerName,
+    setCustomerName,
+    updateItem,
+    removeItem,
+    addRow,
+    ensureTrailingRow,
+    reset,
+    saveNota,
+  } = useNota();
   const settings = useSettings();
   const { print, printing, isSupported } = useBluetoothPrinter();
   const [saving, setSaving] = useState(false);
@@ -81,6 +92,16 @@ export default function NotaBaruPage() {
       <Header title="Nota Tulis" />
 
       <main className="flex-1 space-y-4 overflow-y-auto p-4 pb-32">
+        <div>
+          <label className="mb-1 block text-sm font-medium text-slate-600">
+            Nama Pelanggan (opsional)
+          </label>
+          <Input
+            value={customerName}
+            onChange={(e) => setCustomerName(e.target.value)}
+            placeholder="Contoh: Bu Siti"
+          />
+        </div>
         <NotaTable
           items={items}
           onUpdateItem={updateItem}

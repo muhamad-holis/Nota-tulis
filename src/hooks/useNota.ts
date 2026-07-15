@@ -12,6 +12,7 @@ function emptyRow(): NotaItem {
 
 export function useNota() {
   const [items, setItems] = useState<NotaItem[]>([emptyRow()]);
+  const [customerName, setCustomerName] = useState("");
 
   const total = useMemo(
     () => items.reduce((sum, item) => sum + item.price * item.qty, 0),
@@ -43,6 +44,7 @@ export function useNota() {
 
   const reset = useCallback(() => {
     setItems([emptyRow()]);
+    setCustomerName("");
   }, []);
 
   const validItems = useMemo(
@@ -60,6 +62,7 @@ export function useNota() {
     const nota = {
       uuid,
       number,
+      customerName: customerName.trim() || undefined,
       date: now,
       items: validItems,
       total: validItems.reduce((sum, item) => sum + item.price * item.qty, 0),
@@ -68,11 +71,13 @@ export function useNota() {
     const id = await db.notas.add(nota);
     enqueueSync("notas", uuid);
     return { ...nota, id };
-  }, [validItems]);
+  }, [validItems, customerName]);
 
   return {
     items,
     total,
+    customerName,
+    setCustomerName,
     updateItem,
     removeItem,
     addRow,

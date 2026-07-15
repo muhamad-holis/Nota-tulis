@@ -19,6 +19,7 @@ export interface Nota {
   id?: number;
   uuid?: string;
   number: string;
+  customerName?: string;
   date: number;
   items: NotaItem[];
   total: number;

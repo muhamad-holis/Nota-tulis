@@ -138,6 +138,9 @@ class PrinterService {
     push(CMD.ALIGN_LEFT);
     line(`Tanggal: ${formatDateTime(nota.date)}`);
     line(`No. Nota: ${nota.number}`);
+    if (nota.customerName) {
+      line(`Pelanggan: ${nota.customerName}`);
+    }
     line(divider);
 
     const hrgWidth = 7;

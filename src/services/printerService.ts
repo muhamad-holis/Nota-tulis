@@ -120,11 +120,7 @@ class PrinterService {
     push(CMD.ALIGN_CENTER);
 
     if (settings.storeName) {
-      push(CMD.BOLD_ON);
-      push(CMD.DOUBLE_ON);
       line(settings.storeName);
-      push(CMD.DOUBLE_OFF);
-      push(CMD.BOLD_OFF);
     }
     if (settings.address) line(settings.address);
     if (settings.phone) line(settings.phone);
@@ -163,11 +159,7 @@ class PrinterService {
     }
 
     line(divider);
-    push(CMD.BOLD_ON);
-    push(CMD.DOUBLE_ON);
     line(`TOTAL ${formatRupiah(nota.total)}`);
-    push(CMD.DOUBLE_OFF);
-    push(CMD.BOLD_OFF);
     line(divider);
 
     if (settings.footerText) {

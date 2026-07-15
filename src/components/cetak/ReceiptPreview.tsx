@@ -14,7 +14,7 @@ export function ReceiptPreview({ nota, settings }: ReceiptPreviewProps) {
           // eslint-disable-next-line @next/next/no-img-element
           <img src={settings.logo} alt="Logo toko" className="mx-auto mb-2 h-12 w-12 object-contain" />
         )}
-        <p className="text-sm font-bold">{settings.storeName}</p>
+        <p>{settings.storeName}</p>
         {settings.address && <p>{settings.address}</p>}
         {settings.phone && <p>{settings.phone}</p>}
       </div>
@@ -49,7 +49,7 @@ export function ReceiptPreview({ nota, settings }: ReceiptPreviewProps) {
 
       <div className="my-2 border-t border-dashed border-slate-400" />
 
-      <div className="flex justify-between text-sm font-bold">
+      <div className="flex justify-between">
         <span>TOTAL</span>
         <span>{formatRupiah(nota.total)}</span>
       </div>

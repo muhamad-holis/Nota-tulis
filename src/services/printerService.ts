@@ -203,7 +203,7 @@ class PrinterService {
     line(divider);
 
     for (const item of nota.items) {
-      line(item.name);
+      this.wrapText(item.name, charWidth).forEach((l) => line(l));
       const priceStr = formatRupiah(item.price).replace("Rp ", "");
       const totalStr = formatRupiah(item.totalOverride ?? item.price * item.qty).replace("Rp ", "");
       line(

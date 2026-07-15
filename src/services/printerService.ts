@@ -118,6 +118,33 @@ class PrinterService {
       .join("");
   }
 
+  private wrapText(text: string, width: number): string[] {
+    if (text.length === 0) return [""];
+    const words = text.split(" ");
+    const lines: string[] = [];
+    let current = "";
+    for (const word of words) {
+      const candidate = current ? `${current} ${word}` : word;
+      if (candidate.length > width) {
+        if (current) lines.push(current);
+        if (word.length > width) {
+          let remaining = word;
+          while (remaining.length > width) {
+            lines.push(remaining.slice(0, width));
+            remaining = remaining.slice(width);
+          }
+          current = remaining;
+        } else {
+          current = word;
+        }
+      } else {
+        current = candidate;
+      }
+    }
+    if (current) lines.push(current);
+    return lines;
+  }
+
   async buildReceiptBytes(nota: Nota, settings: Settings): Promise<number[]> {
     const bytes: number[] = [];
     const push = (arr: number[]) => bytes.push(...arr);
@@ -183,13 +210,21 @@ class PrinterService {
 
     line(divider);
     push(CMD.BOLD_ON);
-    line(`TOTAL ${formatRupiah(nota.total)}`);
+    const totalValueStr = formatRupiah(nota.total).replace("Rp ", "");
+    line(
+      this.padColumns(
+        ["TOTAL", "", "", totalValueStr],
+        [nameWidth, hrgWidth, qtyWidth, totalWidth]
+      )
+    );
     push(CMD.BOLD_OFF);
     line(divider);
 
     if (settings.footerText) {
       push(CMD.ALIGN_CENTER);
-      settings.footerText.split("\n").forEach((l) => line(l));
+      settings.footerText.split("\n").forEach((l) => {
+        this.wrapText(l, charWidth).forEach((wrapped) => line(wrapped));
+      });
     }
 
     line();

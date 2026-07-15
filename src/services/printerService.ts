@@ -1,8 +1,8 @@
 "use client";
 
 import type { Nota, Settings } from "@/types";
-import { formatDateTime, formatRupiah } from "@/lib/utils";
 import { imageToMonoRaster } from "@/lib/image";
+import { buildReceiptLines } from "@/lib/receiptText";
 
 // ESC/POS command bytes
 const ESC = 0x1b;
@@ -108,56 +108,17 @@ class PrinterService {
     return [GS, 0x76, 0x30, 0x00, xL, xH, yL, yH, ...data];
   }
 
-  private padColumns(cols: string[], widths: number[]): string {
-    return cols
-      .map((col, i) => {
-        const w = widths[i];
-        if (col.length >= w) return col.slice(0, w);
-        return col.padEnd(w, " ");
-      })
-      .join("");
-  }
-
-  private wrapText(text: string, width: number): string[] {
-    if (text.length === 0) return [""];
-    const words = text.split(" ");
-    const lines: string[] = [];
-    let current = "";
-    for (const word of words) {
-      const candidate = current ? `${current} ${word}` : word;
-      if (candidate.length > width) {
-        if (current) lines.push(current);
-        if (word.length > width) {
-          let remaining = word;
-          while (remaining.length > width) {
-            lines.push(remaining.slice(0, width));
-            remaining = remaining.slice(width);
-          }
-          current = remaining;
-        } else {
-          current = word;
-        }
-      } else {
-        current = candidate;
-      }
-    }
-    if (current) lines.push(current);
-    return lines;
-  }
-
   async buildReceiptBytes(nota: Nota, settings: Settings): Promise<number[]> {
     const bytes: number[] = [];
     const push = (arr: number[]) => bytes.push(...arr);
     const line = (text = "") => push(this.textToBytes(text + "\n"));
     const isWide = settings.paperSize === "80";
-    const charWidth = isWide ? 42 : 32;
-    const divider = "-".repeat(charWidth);
 
     push(CMD.INIT);
-    push(CMD.ALIGN_CENTER);
 
     if (settings.logo) {
       try {
+        push(CMD.ALIGN_CENTER);
         const maxWidthPx = isWide ? 384 : 300;
         const raster = await imageToMonoRaster(settings.logo, maxWidthPx);
         push(this.rasterImageCommand(raster.widthPx, raster.heightPx, raster.data));
@@ -167,71 +128,23 @@ class PrinterService {
       }
     }
 
-    if (settings.storeName) {
-      push(CMD.BOLD_ON);
-      this.wrapText(settings.storeName, charWidth).forEach((l) => line(l));
-      push(CMD.BOLD_OFF);
+    // Baris-baris di bawah ini persis sama dengan yang ditampilkan di preview layar,
+    // karena keduanya memakai buildReceiptLines() dari src/lib/receiptText.ts
+    const receiptLines = buildReceiptLines(nota, settings);
+    let currentAlign: "left" | "center" | null = null;
+    let currentBold = false;
+    for (const rl of receiptLines) {
+      if (rl.align !== currentAlign) {
+        push(rl.align === "center" ? CMD.ALIGN_CENTER : CMD.ALIGN_LEFT);
+        currentAlign = rl.align;
+      }
+      if (!!rl.bold !== currentBold) {
+        push(rl.bold ? CMD.BOLD_ON : CMD.BOLD_OFF);
+        currentBold = !!rl.bold;
+      }
+      line(rl.text);
     }
-    if (settings.address) {
-      this.wrapText(settings.address, charWidth).forEach((l) => line(l));
-    }
-    if (settings.phone) {
-      this.wrapText(settings.phone, charWidth).forEach((l) => line(l));
-    }
-
-    line(divider);
-    if (settings.headerText) {
-      settings.headerText.split("\n").forEach((l) => {
-        this.wrapText(l, charWidth).forEach((wrapped) => line(wrapped));
-      });
-      line(divider);
-    }
-
-    push(CMD.ALIGN_LEFT);
-    line(`Tanggal: ${formatDateTime(nota.date)}`);
-    line(`No. Nota: ${nota.number}`);
-    if (nota.customerName) {
-      line(`Pelanggan: ${nota.customerName}`);
-    }
-    line(divider);
-
-    const hrgWidth = 7;
-    const qtyWidth = 5;
-    const totalWidth = 10;
-    const nameWidth = charWidth - hrgWidth - qtyWidth - totalWidth;
-    line(this.padColumns(["Barang", "Hrg", "Qty", "Total"], [nameWidth, hrgWidth, qtyWidth, totalWidth]));
-    line(divider);
-
-    for (const item of nota.items) {
-      this.wrapText(item.name, charWidth).forEach((l) => line(l));
-      const priceStr = formatRupiah(item.price).replace("Rp ", "");
-      const totalStr = formatRupiah(item.totalOverride ?? item.price * item.qty).replace("Rp ", "");
-      line(
-        this.padColumns(
-          ["", priceStr, `x${item.qty}`, totalStr],
-          [nameWidth, hrgWidth, qtyWidth, totalWidth]
-        )
-      );
-    }
-
-    line(divider);
-    push(CMD.BOLD_ON);
-    const totalValueStr = formatRupiah(nota.total).replace("Rp ", "");
-    line(
-      this.padColumns(
-        ["TOTAL", "", "", totalValueStr],
-        [nameWidth, hrgWidth, qtyWidth, totalWidth]
-      )
-    );
-    push(CMD.BOLD_OFF);
-    line(divider);
-
-    if (settings.footerText) {
-      push(CMD.ALIGN_CENTER);
-      settings.footerText.split("\n").forEach((l) => {
-        this.wrapText(l, charWidth).forEach((wrapped) => line(wrapped));
-      });
-    }
+    if (currentBold) push(CMD.BOLD_OFF);
 
     line();
     line();

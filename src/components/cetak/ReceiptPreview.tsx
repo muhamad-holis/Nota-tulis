@@ -1,4 +1,4 @@
-import { formatDateTime, formatRupiah } from "@/lib/utils";
+import { buildReceiptLines } from "@/lib/receiptText";
 import type { Nota, Settings } from "@/types";
 
 interface ReceiptPreviewProps {
@@ -7,58 +7,33 @@ interface ReceiptPreviewProps {
 }
 
 export function ReceiptPreview({ nota, settings }: ReceiptPreviewProps) {
+  const lines = buildReceiptLines(nota, settings);
+
   return (
-    <div className="mx-auto w-full max-w-[280px] bg-white p-4 font-mono text-[11px] leading-relaxed text-slate-800">
-      <div className="text-center">
-        {settings.logo && (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={settings.logo} alt="Logo toko" className="mx-auto mb-2 h-12 w-12 object-contain" />
-        )}
-        <p>{settings.storeName}</p>
-        {settings.address && <p>{settings.address}</p>}
-        {settings.phone && <p>{settings.phone}</p>}
-      </div>
-
-      <div className="my-2 border-t border-dashed border-slate-400" />
-
-      {settings.headerText && (
-        <>
-          <p className="whitespace-pre-line text-center">{settings.headerText}</p>
-          <div className="my-2 border-t border-dashed border-slate-400" />
-        </>
+    <div className="mx-auto w-full max-w-[280px] overflow-x-auto bg-white p-4 text-slate-800">
+      {settings.logo && (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={settings.logo}
+          alt="Logo toko"
+          className="mx-auto mb-2 h-12 w-12 object-contain"
+        />
       )}
-
-      <p>NOTA BELANJA</p>
-      <p>{formatDateTime(nota.date)}</p>
-      <p>No. {nota.number}</p>
-      {nota.customerName && <p>Pelanggan: {nota.customerName}</p>}
-
-      <div className="my-2 border-t border-dashed border-slate-400" />
-
-      {nota.items.map((item) => (
-        <div key={item.id} className="mb-1">
-          <p>{item.name}</p>
-          <div className="flex justify-between">
-            <span>
-              {formatRupiah(item.price)} x{item.qty}
-            </span>
-            <span>{formatRupiah(item.totalOverride ?? item.price * item.qty)}</span>
+      <div className="whitespace-pre font-mono text-[11px] leading-tight">
+        {lines.map((l, i) => (
+          <div
+            key={i}
+            className={[
+              l.align === "center" ? "text-center" : "text-left",
+              l.bold ? "font-bold" : "",
+            ]
+              .filter(Boolean)
+              .join(" ")}
+          >
+            {l.text.length > 0 ? l.text : "\u00A0"}
           </div>
-        </div>
-      ))}
-
-      <div className="my-2 border-t border-dashed border-slate-400" />
-
-      <div className="flex justify-between">
-        <span>TOTAL</span>
-        <span>{formatRupiah(nota.total)}</span>
+        ))}
       </div>
-
-      <div className="my-2 border-t border-dashed border-slate-400" />
-
-      {settings.footerText && (
-        <p className="whitespace-pre-line text-center">{settings.footerText}</p>
-      )}
     </div>
   );
 }

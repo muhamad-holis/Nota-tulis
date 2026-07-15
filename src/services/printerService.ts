@@ -153,7 +153,7 @@ class PrinterService {
     for (const item of nota.items) {
       line(item.name);
       const priceStr = formatRupiah(item.price).replace("Rp ", "");
-      const totalStr = formatRupiah(item.price * item.qty).replace("Rp ", "");
+      const totalStr = formatRupiah(item.totalOverride ?? item.price * item.qty).replace("Rp ", "");
       line(
         this.padColumns(
           ["", priceStr, `x${item.qty}`, totalStr],

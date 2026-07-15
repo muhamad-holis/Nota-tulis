@@ -13,6 +13,7 @@ export interface NotaItem {
   name: string;
   price: number;
   qty: number;
+  totalOverride?: number;
 }
 
 export interface Nota {

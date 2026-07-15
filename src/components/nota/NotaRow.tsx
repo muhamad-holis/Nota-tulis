@@ -1,11 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { KeyboardEvent } from "react";
 import { motion, useAnimation } from "framer-motion";
 import { X, Trash2 } from "lucide-react";
 import type { NotaItem, Product } from "@/types";
-import { formatRupiah, parseRupiahInput } from "@/lib/utils";
+import { parseRupiahInput } from "@/lib/utils";
 import { ProductAutocomplete } from "./ProductAutocomplete";
 
 interface NotaRowProps {
@@ -27,16 +27,32 @@ export function NotaRow({
 }: NotaRowProps) {
   const controls = useAnimation();
   const [priceText, setPriceText] = useState(item.price ? String(item.price) : "");
-  const total = item.price * item.qty;
+  const computedTotal = item.price * item.qty;
+  const effectiveTotal = item.totalOverride ?? computedTotal;
+  const [totalText, setTotalText] = useState(effectiveTotal ? String(effectiveTotal) : "");
+
+  useEffect(() => {
+    setTotalText(effectiveTotal ? String(effectiveTotal) : "");
+  }, [effectiveTotal]);
 
   function handleSelectProduct(product: Product) {
-    onUpdate({ name: product.name, price: product.price });
+    onUpdate({ name: product.name, price: product.price, totalOverride: undefined });
     setPriceText(String(product.price));
   }
 
   function handlePriceChange(text: string) {
     setPriceText(text);
-    onUpdate({ price: parseRupiahInput(text) });
+    onUpdate({ price: parseRupiahInput(text), totalOverride: undefined });
+  }
+
+  function handleQtyChange(text: string) {
+    const qty = parseInt(text.replace(/[^0-9]/g, ""), 10) || 0;
+    onUpdate({ qty, totalOverride: undefined });
+  }
+
+  function handleTotalChange(text: string) {
+    setTotalText(text);
+    onUpdate({ totalOverride: parseRupiahInput(text) });
   }
 
   function handlePriceKeyDown(e: KeyboardEvent<HTMLInputElement>) {
@@ -73,7 +89,7 @@ export function NotaRow({
         dragElastic={0.1}
         animate={controls}
         onDragEnd={handleDragEnd}
-        className="relative grid grid-cols-[1fr_5.5rem_3.5rem_5.5rem_1.75rem] items-center gap-2 border-b border-slate-50 bg-white px-3 py-2.5"
+        className="relative grid grid-cols-[1fr_4.5rem_2.25rem_5rem_1.75rem] items-center gap-2 border-b border-slate-50 bg-white px-3 py-2.5"
       >
         <ProductAutocomplete
           id={`name-input-${item.id}`}
@@ -91,13 +107,13 @@ export function NotaRow({
           onKeyDown={handlePriceKeyDown}
           inputMode="numeric"
           placeholder="0"
-          className="w-full rounded-lg bg-slate-50 px-2 py-1.5 text-right text-sm text-slate-700 outline-none focus:ring-2 focus:ring-brand-100"
+          className="w-full rounded-lg bg-slate-50 px-1.5 py-1.5 text-right text-sm text-slate-700 outline-none focus:ring-2 focus:ring-brand-100"
         />
 
         <input
           id={`qty-input-${item.id}`}
           value={item.qty === 0 ? "" : item.qty}
-          onChange={(e) => onUpdate({ qty: parseInt(e.target.value.replace(/[^0-9]/g, ""), 10) || 0 })}
+          onChange={(e) => handleQtyChange(e.target.value)}
           onFocus={(e) => e.target.select()}
           onBlur={() => {
             if (!item.qty) onUpdate({ qty: 1 });
@@ -105,12 +121,23 @@ export function NotaRow({
           onKeyDown={handleQtyKeyDown}
           inputMode="numeric"
           placeholder="1"
-          className="w-full rounded-lg bg-slate-50 px-2 py-1.5 text-center text-sm text-slate-700 outline-none focus:ring-2 focus:ring-brand-100"
+          className="w-full rounded-lg bg-slate-50 px-1 py-1.5 text-center text-sm text-slate-700 outline-none focus:ring-2 focus:ring-brand-100"
         />
 
-        <span className="truncate text-right text-sm font-medium text-slate-800">
-          {formatRupiah(total)}
-        </span>
+        <input
+          id={`total-input-${item.id}`}
+          value={totalText}
+          onChange={(e) => handleTotalChange(e.target.value)}
+          onFocus={(e) => e.target.select()}
+          inputMode="numeric"
+          placeholder="0"
+          title="Otomatis dari Harga x Qty, atau ketik manual untuk mengoverride"
+          className={`w-full rounded-lg px-1.5 py-1.5 text-right text-sm font-medium outline-none focus:ring-2 focus:ring-brand-100 ${
+            item.totalOverride !== undefined
+              ? "bg-amber-50 text-amber-700"
+              : "bg-slate-50 text-slate-800"
+          }`}
+        />
 
         <button
           onClick={onRemove}

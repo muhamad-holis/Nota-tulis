@@ -15,7 +15,7 @@ export function useNota() {
   const [customerName, setCustomerName] = useState("");
 
   const total = useMemo(
-    () => items.reduce((sum, item) => sum + item.price * item.qty, 0),
+    () => items.reduce((sum, item) => sum + (item.totalOverride ?? item.price * item.qty), 0),
     [items]
   );
 
@@ -65,7 +65,7 @@ export function useNota() {
       customerName: customerName.trim() || undefined,
       date: now,
       items: validItems,
-      total: validItems.reduce((sum, item) => sum + item.price * item.qty, 0),
+      total: validItems.reduce((sum, item) => sum + (item.totalOverride ?? item.price * item.qty), 0),
       updatedAt: now,
     };
     const id = await db.notas.add(nota);

@@ -24,7 +24,7 @@ export function NotaTable({
 }: NotaTableProps) {
   return (
     <div className="overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-soft">
-      <div className="grid grid-cols-[1fr_5.5rem_3.5rem_5.5rem_1.75rem] gap-2 border-b border-slate-100 bg-slate-50 px-3 py-2 text-xs font-medium text-slate-500">
+      <div className="grid grid-cols-[1fr_4.5rem_2.25rem_5rem_1.75rem] gap-2 border-b border-slate-100 bg-slate-50 px-3 py-2 text-xs font-medium text-slate-500">
         <span>Nama Barang</span>
         <span className="text-right">Harga</span>
         <span className="text-center">Qty</span>

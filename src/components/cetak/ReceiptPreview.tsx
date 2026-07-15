@@ -41,7 +41,7 @@ export function ReceiptPreview({ nota, settings }: ReceiptPreviewProps) {
             <span>
               {formatRupiah(item.price)} x{item.qty}
             </span>
-            <span>{formatRupiah(item.price * item.qty)}</span>
+            <span>{formatRupiah(item.totalOverride ?? item.price * item.qty)}</span>
           </div>
         </div>
       ))}

@@ -140,18 +140,21 @@ class PrinterService {
     line(`No. Nota: ${nota.number}`);
     line(divider);
 
-    const nameWidth = charWidth - 14;
-    line(this.padColumns(["Barang", "Hrg", "Qty", "Total"], [nameWidth, 6, 4, 4]));
+    const hrgWidth = 7;
+    const qtyWidth = 5;
+    const totalWidth = 10;
+    const nameWidth = charWidth - hrgWidth - qtyWidth - totalWidth;
+    line(this.padColumns(["Barang", "Hrg", "Qty", "Total"], [nameWidth, hrgWidth, qtyWidth, totalWidth]));
     line(divider);
 
     for (const item of nota.items) {
       line(item.name);
-      const priceStr = Math.round(item.price / 1000) + "rb";
+      const priceStr = formatRupiah(item.price).replace("Rp ", "");
       const totalStr = formatRupiah(item.price * item.qty).replace("Rp ", "");
       line(
         this.padColumns(
           ["", priceStr, `x${item.qty}`, totalStr],
-          [nameWidth, 6, 4, charWidth - nameWidth - 10]
+          [nameWidth, hrgWidth, qtyWidth, totalWidth]
         )
       );
     }

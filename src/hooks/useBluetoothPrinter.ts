@@ -1,13 +1,27 @@
 "use client";
 
-import { useCallback, useState } from "react";
-import { printerService } from "@/services/printerService";
+import { useCallback, useEffect, useState } from "react";
+import { printerService, type PrinterStatus } from "@/services/printerService";
 import type { Nota, Settings } from "@/types";
 
 export function useBluetoothPrinter() {
   const [connecting, setConnecting] = useState(false);
   const [printing, setPrinting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [status, setStatus] = useState<PrinterStatus>(printerService.getStatus());
+
+  useEffect(() => {
+    return printerService.onStatusChange(setStatus);
+  }, []);
+
+  useEffect(() => {
+    // Kalau sebelumnya pernah tersambung ke printer (mis. buka ulang app), coba sambung
+    // ulang diam-diam di latar belakang tanpa memunculkan dialog pilih perangkat.
+    // Kalau gagal, biarkan saja — user tinggal tekan "Cari Printer" seperti biasa.
+    if (printerService.isSupported() && !printerService.isConnected()) {
+      printerService.ensureConnected().catch(() => undefined);
+    }
+  }, []);
 
   const connect = useCallback(async (): Promise<{ id: string; name: string } | null> => {
     setError(null);
@@ -23,13 +37,14 @@ export function useBluetoothPrinter() {
     }
   }, []);
 
+  const disconnect = useCallback(async () => {
+    await printerService.disconnect();
+  }, []);
+
   const print = useCallback(async (nota: Nota, settings: Settings) => {
     setError(null);
     setPrinting(true);
     try {
-      if (!printerService.isConnected()) {
-        await printerService.scanAndConnect();
-      }
       await printerService.printReceipt(nota, settings);
       return true;
     } catch (err) {
@@ -44,9 +59,6 @@ export function useBluetoothPrinter() {
     setError(null);
     setPrinting(true);
     try {
-      if (!printerService.isConnected()) {
-        await printerService.scanAndConnect();
-      }
       await printerService.testPrint(settings);
       return true;
     } catch (err) {
@@ -57,5 +69,15 @@ export function useBluetoothPrinter() {
     }
   }, []);
 
-  return { connect, print, testPrint, connecting, printing, error, isSupported: printerService.isSupported() };
+  return {
+    connect,
+    disconnect,
+    print,
+    testPrint,
+    connecting,
+    printing,
+    error,
+    status,
+    isSupported: printerService.isSupported(),
+  };
 }

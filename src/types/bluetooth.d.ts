@@ -23,10 +23,18 @@ interface BluetoothRemoteGATTServer {
   getPrimaryServices(): Promise<BluetoothRemoteGATTService[]>;
 }
 
-interface BluetoothDevice {
+interface BluetoothDevice extends EventTarget {
   id: string;
   name?: string;
   gatt?: BluetoothRemoteGATTServer;
+  addEventListener(
+    type: "gattserverdisconnected",
+    listener: (this: BluetoothDevice, ev: Event) => void
+  ): void;
+  removeEventListener(
+    type: "gattserverdisconnected",
+    listener: (this: BluetoothDevice, ev: Event) => void
+  ): void;
 }
 
 interface RequestDeviceOptions {
@@ -37,6 +45,9 @@ interface RequestDeviceOptions {
 
 interface Bluetooth {
   requestDevice(options?: RequestDeviceOptions): Promise<BluetoothDevice>;
+  // Perangkat yang sudah pernah diizinkan user, tanpa memunculkan dialog pilih perangkat.
+  // Didukung di Chrome for Android; harus dicek keberadaannya sebelum dipakai.
+  getDevices?(): Promise<BluetoothDevice[]>;
 }
 
 interface Navigator {

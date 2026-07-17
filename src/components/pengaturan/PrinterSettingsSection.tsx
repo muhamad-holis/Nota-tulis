@@ -13,7 +13,7 @@ interface PrinterSettingsSectionProps {
 }
 
 export function PrinterSettingsSection({ settings, onUpdate }: PrinterSettingsSectionProps) {
-  const { connect, testPrint, connecting, printing, isSupported } = useBluetoothPrinter();
+  const { connect, testPrint, connecting, printing, isSupported, status } = useBluetoothPrinter();
 
   async function handleConnect() {
     if (!isSupported) {
@@ -32,27 +32,42 @@ export function PrinterSettingsSection({ settings, onUpdate }: PrinterSettingsSe
     showToast(ok ? "Test print berhasil" : "Test print gagal", ok ? "success" : "error");
   }
 
+  const statusLabel: Record<typeof status, string> = {
+    connected: "Terhubung",
+    reconnecting: "Menyambungkan ulang...",
+    connecting: "Mencari...",
+    disconnected: settings.printer ? "Terputus" : "Belum terhubung",
+  };
+  const statusIsGood = status === "connected";
+
   return (
     <SettingsSection title="Printer Bluetooth">
       <div className="mb-3 flex items-center justify-between rounded-xl bg-slate-50 px-3 py-2.5">
         <div className="flex items-center gap-2">
-          <Bluetooth size={18} className="text-brand-600" />
+          <Bluetooth size={18} className={statusIsGood ? "text-brand-600" : "text-slate-400"} />
           <div>
             <p className="text-sm font-medium text-slate-700">
               {settings.printer?.name ?? "Belum terhubung"}
             </p>
-            {settings.printer && (
-              <p className="flex items-center gap-1 text-xs text-emerald-600">
-                <CheckCircle2 size={12} /> Terpasang
-              </p>
-            )}
+            <p
+              className={`flex items-center gap-1 text-xs ${
+                statusIsGood
+                  ? "text-emerald-600"
+                  : status === "reconnecting" || status === "connecting"
+                    ? "text-amber-600"
+                    : "text-slate-400"
+              }`}
+            >
+              {statusIsGood && <CheckCircle2 size={12} />}
+              {statusLabel[status]}
+            </p>
           </div>
         </div>
       </div>
 
       <div className="flex gap-2">
         <Button variant="outline" size="sm" className="flex-1" onClick={handleConnect} disabled={connecting}>
-          <Bluetooth size={14} /> {connecting ? "Mencari..." : "Cari Printer"}
+          <Bluetooth size={14} /> {connecting ? "Mencari..." : statusIsGood ? "Ganti Printer" : "Cari Printer"}
         </Button>
         <Button
           variant="secondary"

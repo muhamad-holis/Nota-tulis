@@ -23,76 +23,214 @@ const CMD = {
 const PRINTER_SERVICE_UUID = "000018f0-0000-1000-8000-00805f9b34fb";
 const PRINTER_CHARACTERISTIC_UUID = "00002af1-0000-1000-8000-00805f9b34fb";
 
+// Kunci localStorage untuk menyimpan id printer terakhir yang berhasil disambung,
+// dipakai untuk mencoba reconnect diam-diam (tanpa dialog pilih perangkat) di sesi berikutnya.
+const LAST_DEVICE_ID_KEY = "notaTulis:lastPrinterDeviceId";
+
+// Berapa byte dikirim per potongan BLE, dan jeda antar potongan.
+// Nilai kecil + jeda ini sengaja dipilih supaya buffer printer thermal murah tidak
+// kebanjiran data, karena itu penyebab umum printer memutus koneksi sendiri saat mencetak.
+const WRITE_CHUNK_SIZE = 100;
+const WRITE_CHUNK_DELAY_MS = 12;
+
+const CONNECT_TIMEOUT_MS = 8000;
+
+export type PrinterStatus = "disconnected" | "connecting" | "connected" | "reconnecting";
+
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function withTimeout<T>(promise: Promise<T>, ms: number, message: string): Promise<T> {
+  let timer: ReturnType<typeof setTimeout>;
+  const timeout = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => reject(new Error(message)), ms);
+  });
+  try {
+    return await Promise.race([promise, timeout]);
+  } finally {
+    clearTimeout(timer!);
+  }
+}
+
 class PrinterService {
   private device: BluetoothDevice | null = null;
   private characteristic: BluetoothRemoteGATTCharacteristic | null = null;
+  private status: PrinterStatus = "disconnected";
+  private listeners = new Set<(status: PrinterStatus) => void>();
+  private writeChain: Promise<void> = Promise.resolve();
+  private disconnectHandler = () => {
+    this.characteristic = null;
+    this.setStatus("disconnected");
+    // Printer BLE murah sering putus sendiri karena idle timeout, bukan karena
+    // benar-benar dimatikan/dijauhkan. Coba sambung ulang diam-diam di latar
+    // belakang supaya pas user tekan cetak berikutnya, printer sudah siap lagi.
+    void this.attemptSilentReconnect();
+  };
 
   isSupported(): boolean {
     return typeof navigator !== "undefined" && !!navigator.bluetooth;
-  }
-
-  async scanAndConnect(): Promise<{ id: string; name: string }> {
-    if (typeof navigator === "undefined" || !navigator.bluetooth) {
-      throw new Error("Web Bluetooth tidak didukung di perangkat/browser ini.");
-    }
-    const bluetooth = navigator.bluetooth;
-
-    const device = await bluetooth.requestDevice({
-      acceptAllDevices: true,
-      optionalServices: [PRINTER_SERVICE_UUID],
-    });
-
-    const server = await device.gatt?.connect();
-    if (!server) throw new Error("Gagal terhubung ke printer.");
-
-    let characteristic: BluetoothRemoteGATTCharacteristic | null = null;
-    try {
-      const service = await server.getPrimaryService(PRINTER_SERVICE_UUID);
-      characteristic = await service.getCharacteristic(PRINTER_CHARACTERISTIC_UUID);
-    } catch {
-      const services = await server.getPrimaryServices();
-      for (const service of services) {
-        const chars = await service.getCharacteristics();
-        const writable = chars.find(
-          (c) => c.properties.write || c.properties.writeWithoutResponse
-        );
-        if (writable) {
-          characteristic = writable;
-          break;
-        }
-      }
-    }
-
-    if (!characteristic) {
-      throw new Error("Tidak ditemukan layanan cetak pada printer ini.");
-    }
-
-    this.device = device;
-    this.characteristic = characteristic;
-
-    return { id: device.id, name: device.name || "Printer Bluetooth" };
-  }
-
-  async disconnect() {
-    this.device?.gatt?.disconnect();
-    this.device = null;
-    this.characteristic = null;
   }
 
   isConnected(): boolean {
     return !!this.device?.gatt?.connected && !!this.characteristic;
   }
 
-  private async write(bytes: number[]) {
-    if (!this.characteristic) {
-      throw new Error("Printer belum terhubung.");
+  getStatus(): PrinterStatus {
+    return this.status;
+  }
+
+  onStatusChange(listener: (status: PrinterStatus) => void): () => void {
+    this.listeners.add(listener);
+    return () => this.listeners.delete(listener);
+  }
+
+  private setStatus(status: PrinterStatus) {
+    this.status = status;
+    for (const listener of this.listeners) listener(status);
+  }
+
+  private saveLastDeviceId(id: string) {
+    try {
+      localStorage.setItem(LAST_DEVICE_ID_KEY, id);
+    } catch {
+      // localStorage bisa saja tidak tersedia (mis. mode privat); abaikan saja.
     }
-    const chunkSize = 180;
-    const data = new Uint8Array(bytes);
-    for (let i = 0; i < data.length; i += chunkSize) {
-      const chunk = data.slice(i, i + chunkSize);
-      await this.characteristic.writeValue(chunk);
+  }
+
+  private getLastDeviceId(): string | null {
+    try {
+      return localStorage.getItem(LAST_DEVICE_ID_KEY);
+    } catch {
+      return null;
     }
+  }
+
+  /** Cari characteristic yang bisa ditulis di server GATT yang sudah connect. */
+  private async discoverWritableCharacteristic(
+    server: BluetoothRemoteGATTServer
+  ): Promise<BluetoothRemoteGATTCharacteristic> {
+    try {
+      const service = await server.getPrimaryService(PRINTER_SERVICE_UUID);
+      return await service.getCharacteristic(PRINTER_CHARACTERISTIC_UUID);
+    } catch {
+      const services = await server.getPrimaryServices();
+      for (const service of services) {
+        const chars = await service.getCharacteristics();
+        const writable = chars.find((c) => c.properties.write || c.properties.writeWithoutResponse);
+        if (writable) return writable;
+      }
+    }
+    throw new Error("Tidak ditemukan layanan cetak pada printer ini.");
+  }
+
+  /** Hubungkan ke server GATT sebuah device yang sudah punya izin, dengan timeout + beberapa kali percobaan. */
+  private async connectGatt(device: BluetoothDevice, attempts = 3): Promise<BluetoothRemoteGATTServer> {
+    let lastError: unknown;
+    for (let i = 0; i < attempts; i++) {
+      try {
+        if (!device.gatt) throw new Error("Perangkat ini tidak mendukung GATT.");
+        const server = await withTimeout(
+          device.gatt.connect(),
+          CONNECT_TIMEOUT_MS,
+          "Waktu koneksi ke printer habis. Pastikan printer menyala dan dalam jangkauan."
+        );
+        return server;
+      } catch (err) {
+        lastError = err;
+        if (i < attempts - 1) await sleep(300 * (i + 1));
+      }
+    }
+    throw lastError instanceof Error ? lastError : new Error("Gagal terhubung ke printer.");
+  }
+
+  /** Pasang device sebagai device aktif: connect GATT, cari characteristic, pasang listener disconnect. */
+  private async attachDevice(device: BluetoothDevice): Promise<{ id: string; name: string }> {
+    const server = await this.connectGatt(device);
+    const characteristic = await this.discoverWritableCharacteristic(server);
+
+    // Hindari listener dobel kalau device yang sama dipasang ulang.
+    this.device?.removeEventListener("gattserverdisconnected", this.disconnectHandler);
+    device.addEventListener("gattserverdisconnected", this.disconnectHandler);
+
+    this.device = device;
+    this.characteristic = characteristic;
+    this.saveLastDeviceId(device.id);
+    this.setStatus("connected");
+
+    return { id: device.id, name: device.name || "Printer Bluetooth" };
+  }
+
+  /**
+   * Coba sambung ulang tanpa memunculkan dialog pilih perangkat, memakai:
+   * 1) referensi device di memori (paling umum, saat drop di sesi yang sama), atau
+   * 2) navigator.bluetooth.getDevices() untuk mencari device yang sudah pernah diizinkan.
+   * Melempar error kalau semua gagal — pemanggil boleh fallback ke scanAndConnect() (butuh tap user).
+   */
+  private async attemptSilentReconnect(): Promise<{ id: string; name: string }> {
+    if (typeof navigator === "undefined" || !navigator.bluetooth) {
+      throw new Error("Web Bluetooth tidak didukung di perangkat/browser ini.");
+    }
+    this.setStatus("reconnecting");
+
+    if (this.device) {
+      try {
+        return await this.attachDevice(this.device);
+      } catch {
+        // lanjut coba cara lain di bawah
+      }
+    }
+
+    const lastId = this.getLastDeviceId();
+    if (navigator.bluetooth.getDevices && lastId) {
+      try {
+        const devices = await navigator.bluetooth.getDevices();
+        const match = devices.find((d) => d.id === lastId);
+        if (match) {
+          return await this.attachDevice(match);
+        }
+      } catch {
+        // getDevices() mungkin tidak didukung penuh di browser ini; abaikan.
+      }
+    }
+
+    this.setStatus("disconnected");
+    throw new Error("Printer terputus. Tekan \"Cari Printer\" untuk menyambungkan ulang.");
+  }
+
+  /**
+   * Pastikan sudah tersambung sebelum mencetak. Dipakai oleh printReceipt/testPrint
+   * supaya print pertama tidak langsung gagal hanya karena koneksi sempat drop.
+   */
+  async ensureConnected(): Promise<void> {
+    if (this.isConnected()) return;
+    await this.attemptSilentReconnect();
+  }
+
+  /** Memunculkan dialog pilih perangkat Bluetooth. Harus dipanggil langsung dari aksi/tap user. */
+  async scanAndConnect(): Promise<{ id: string; name: string }> {
+    if (typeof navigator === "undefined" || !navigator.bluetooth) {
+      throw new Error("Web Bluetooth tidak didukung di perangkat/browser ini.");
+    }
+    this.setStatus("connecting");
+    try {
+      const device = await navigator.bluetooth.requestDevice({
+        acceptAllDevices: true,
+        optionalServices: [PRINTER_SERVICE_UUID],
+      });
+      return await this.attachDevice(device);
+    } catch (err) {
+      this.setStatus(this.isConnected() ? "connected" : "disconnected");
+      throw err;
+    }
+  }
+
+  async disconnect() {
+    this.device?.removeEventListener("gattserverdisconnected", this.disconnectHandler);
+    this.device?.gatt?.disconnect();
+    this.device = null;
+    this.characteristic = null;
+    this.setStatus("disconnected");
   }
 
   private textToBytes(text: string): number[] {
@@ -106,6 +244,39 @@ class PrinterService {
     const yL = heightPx & 0xff;
     const yH = (heightPx >> 8) & 0xff;
     return [GS, 0x76, 0x30, 0x00, xL, xH, yL, yH, ...data];
+  }
+
+  /** Kirim byte ke printer, dipecah jadi potongan kecil + jeda, dan diantre supaya tidak tabrakan. */
+  private async write(bytes: number[]) {
+    // Antrekan supaya dua pemanggilan write() yang tumpang tindih (mis. user tap cetak 2x
+    // cepat) tidak saling tabrakan dan memicu error "GATT operation already in progress".
+    const run = this.writeChain.then(() => this.writeInternal(bytes));
+    // Simpan promise baru di rantai, tapi jangan biarkan kegagalan salah satu write
+    // menyumbat antrean untuk write berikutnya.
+    this.writeChain = run.catch(() => undefined);
+    return run;
+  }
+
+  private async writeInternal(bytes: number[], isRetry = false): Promise<void> {
+    if (!this.characteristic) {
+      throw new Error("Printer belum terhubung.");
+    }
+    const data = new Uint8Array(bytes);
+    try {
+      for (let i = 0; i < data.length; i += WRITE_CHUNK_SIZE) {
+        const chunk = data.slice(i, i + WRITE_CHUNK_SIZE);
+        await this.characteristic.writeValue(chunk);
+        if (i + WRITE_CHUNK_SIZE < data.length) await sleep(WRITE_CHUNK_DELAY_MS);
+      }
+    } catch (err) {
+      if (isRetry) {
+        throw err instanceof Error ? err : new Error("Gagal mengirim data ke printer.");
+      }
+      // Kemungkinan koneksi drop di tengah proses kirim. Coba sambung ulang sekali,
+      // lalu ulangi pengiriman dari awal sebelum benar-benar menyerah.
+      await this.ensureConnected();
+      await this.writeInternal(bytes, true);
+    }
   }
 
   async buildReceiptBytes(nota: Nota, settings: Settings): Promise<number[]> {
@@ -155,11 +326,13 @@ class PrinterService {
   }
 
   async printReceipt(nota: Nota, settings: Settings) {
+    await this.ensureConnected();
     const bytes = await this.buildReceiptBytes(nota, settings);
     await this.write(bytes);
   }
 
   async testPrint(settings: Settings) {
+    await this.ensureConnected();
     const bytes: number[] = [];
     const push = (arr: number[]) => bytes.push(...arr);
     const line = (text = "") => push(this.textToBytes(text + "\n"));

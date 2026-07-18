@@ -54,6 +54,13 @@ const COLUMN_GAP = 1;
  * Hitung lebar kolom Barang/Hrg/Qty/Total berdasarkan isi nota ini sendiri
  * (bukan lebar tetap), supaya nama barang, harga, qty, dan total selalu
  * muat dalam SATU baris walau di kertas 58mm (32 karakter).
+ *
+ * Catatan: lebar kolom Total di sini HANYA dihitung dari total per-baris item,
+ * bukan dari grand total nota. Grand total biasanya jauh lebih besar (hasil
+ * penjumlahan semua barang) dan kalau ikut dihitung di sini, kolom Total jadi
+ * kelebaran untuk semua baris item padahal cuma dipakai penuh di baris TOTAL
+ * saja — sisanya jadi ruang kosong nganggur di kanan. Baris TOTAL dirender
+ * terpisah (lihat buildReceiptLines) supaya boleh lebih lebar dari kolom ini.
  */
 function computeColumnWidths(nota: Nota, charWidth: number): ColumnWidths {
   let maxHrgLen = "Hrg".length;
@@ -68,7 +75,6 @@ function computeColumnWidths(nota: Nota, charWidth: number): ColumnWidths {
     maxQtyLen = Math.max(maxQtyLen, qtyStr.length);
     maxTotalLen = Math.max(maxTotalLen, totalStr.length);
   }
-  maxTotalLen = Math.max(maxTotalLen, formatRupiah(nota.total).replace("Rp ", "").length);
 
   let hrgWidth = maxHrgLen + COLUMN_GAP;
   let qtyWidth = maxQtyLen + COLUMN_GAP;
@@ -95,18 +101,18 @@ function computeColumnWidths(nota: Nota, charWidth: number): ColumnWidths {
   return { nameWidth, hrgWidth, qtyWidth, totalWidth };
 }
 
-/**
- * Muat teks ke lebar kolom tertentu. Kalau kepanjangan dan `truncateMark` aktif,
- * dipotong lalu diberi tanda "." di ujung supaya kelihatan bahwa nama itu terpotong
- * (nama barang yang sangat panjang di kertas 58mm memang tidak akan pernah muat penuh
- * dalam satu baris — itu batas fisik kertas, bukan bug).
- */
-function fitColumn(text: string, width: number, truncateMark = false): string {
+/** Muat teks rata KIRI ke lebar kolom tertentu (dipakai untuk nama barang). */
+function fitLeft(text: string, width: number, truncateMark = false): string {
   if (text.length > width) {
     if (truncateMark && width > 1) return text.slice(0, width - 1) + ".";
     return text.slice(0, width);
   }
   return text.padEnd(width, " ");
+}
+
+/** Muat teks rata KANAN ke lebar kolom tertentu (dipakai untuk angka harga/qty/total). */
+function fitRight(text: string, width: number): string {
+  return text.length >= width ? text : text.padStart(width, " ");
 }
 
 /**
@@ -150,10 +156,10 @@ export function buildReceiptLines(nota: Nota, settings: Settings): ReceiptLine[]
   const { nameWidth, hrgWidth, qtyWidth, totalWidth } = computeColumnWidths(nota, charWidth);
 
   push(
-    fitColumn("Barang", nameWidth) +
-      fitColumn("Hrg", hrgWidth) +
-      fitColumn("Qty", qtyWidth) +
-      fitColumn("Total", totalWidth),
+    fitLeft("Barang", nameWidth) +
+      fitRight("Hrg", hrgWidth) +
+      fitRight("Qty", qtyWidth) +
+      fitRight("Total", totalWidth),
     "left"
   );
   push(divider, "left");
@@ -163,21 +169,23 @@ export function buildReceiptLines(nota: Nota, settings: Settings): ReceiptLine[]
     const qtyStr = `x${item.qty}`;
     const totalStr = formatRupiah(item.totalOverride ?? item.price * item.qty).replace("Rp ", "");
     push(
-      fitColumn(item.name, nameWidth, true) +
-        fitColumn(priceStr, hrgWidth) +
-        fitColumn(qtyStr, qtyWidth) +
-        fitColumn(totalStr, totalWidth),
+      fitLeft(item.name, nameWidth, true) +
+        fitRight(priceStr, hrgWidth) +
+        fitRight(qtyStr, qtyWidth) +
+        fitRight(totalStr, totalWidth),
       "left"
     );
   }
 
   push(divider, "left");
+
+  // Baris TOTAL dirender terpisah dari kolom item: angkanya rata kanan sampai
+  // mepet ke tepi kertas, boleh lebih lebar dari kolom Total di baris item
+  // (grand total biasanya lebih besar dari total per barang).
   const totalValueStr = formatRupiah(nota.total).replace("Rp ", "");
+  const totalLabelWidth = Math.max("TOTAL".length, charWidth - totalValueStr.length);
   push(
-    fitColumn("TOTAL", nameWidth) +
-      fitColumn("", hrgWidth) +
-      fitColumn("", qtyWidth) +
-      fitColumn(totalValueStr, totalWidth),
+    fitLeft("TOTAL", totalLabelWidth) + fitRight(totalValueStr, charWidth - totalLabelWidth),
     "left",
     true
   );

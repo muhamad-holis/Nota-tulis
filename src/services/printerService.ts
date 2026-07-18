@@ -287,7 +287,9 @@ class PrinterService {
 
     push(CMD.INIT);
 
-    if (settings.logo) {
+    // settings.showLogo bisa saja belum ada di data lama (sebelum fitur ini ditambahkan);
+    // anggap true (tampilkan) supaya perilaku untuk user lama tidak berubah tiba-tiba.
+    if (settings.logo && settings.showLogo !== false) {
       try {
         push(CMD.ALIGN_CENTER);
         const maxWidthPx = isWide ? 384 : 300;

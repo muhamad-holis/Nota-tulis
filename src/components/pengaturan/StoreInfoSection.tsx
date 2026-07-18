@@ -4,6 +4,7 @@ import { useRef, useState } from "react";
 import type { ChangeEvent } from "react";
 import { ImagePlus } from "lucide-react";
 import { SettingsSection } from "./SettingsSection";
+import { Switch } from "@/components/ui/Switch";
 import { LiveField } from "@/components/ui/LiveField";
 import { cropImageToSquareDataUrl } from "@/lib/image";
 import { showToast } from "@/lib/toast";
@@ -59,6 +60,22 @@ export function StoreInfoSection({ settings, onUpdate }: StoreInfoSectionProps) 
         </div>
         <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleLogoChange} />
       </div>
+
+      {settings.logo && (
+        <div className="mb-4 flex items-center justify-between rounded-xl bg-slate-50 px-3 py-2.5">
+          <div>
+            <p className="text-sm font-medium text-slate-700">Tampilkan Logo di Struk</p>
+            <p className="text-xs text-slate-400">
+              Matikan kalau printer tidak butuh logo (lebih cepat &amp; hemat kertas)
+            </p>
+          </div>
+          <Switch
+            checked={settings.showLogo !== false}
+            onChange={(checked) => onUpdate({ showLogo: checked })}
+            label="Tampilkan logo di struk"
+          />
+        </div>
+      )}
 
       <div className="space-y-3">
         <div>

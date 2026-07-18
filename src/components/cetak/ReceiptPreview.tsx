@@ -11,7 +11,7 @@ export function ReceiptPreview({ nota, settings }: ReceiptPreviewProps) {
 
   return (
     <div className="mx-auto w-full max-w-[280px] overflow-x-auto bg-white p-4 text-slate-800">
-      {settings.logo && (
+      {settings.logo && settings.showLogo !== false && (
         // eslint-disable-next-line @next/next/no-img-element
         <img
           src={settings.logo}

@@ -62,6 +62,7 @@ function defaultSettingsValue(): Settings {
     address: "",
     phone: "",
     logo: null,
+    showLogo: true,
     headerText: "TERIMA KASIH\nSELAMAT DATANG",
     footerText: "Terima kasih atas kepercayaan Anda.",
     paperSize: "58",

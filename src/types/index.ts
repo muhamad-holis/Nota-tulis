@@ -40,6 +40,7 @@ export interface Settings {
   address: string;
   phone: string;
   logo: string | null;
+  showLogo: boolean;
   headerText: string;
   footerText: string;
   paperSize: "58" | "80";

@@ -11,16 +11,6 @@ export function getCharWidth(settings: Settings): number {
   return settings.paperSize === "80" ? 42 : 32;
 }
 
-export function padColumns(cols: string[], widths: number[]): string {
-  return cols
-    .map((col, i) => {
-      const w = widths[i];
-      if (col.length >= w) return col.slice(0, w);
-      return col.padEnd(w, " ");
-    })
-    .join("");
-}
-
 export function wrapText(text: string, width: number): string[] {
   if (text.length === 0) return [""];
   const words = text.split(" ");
@@ -46,6 +36,77 @@ export function wrapText(text: string, width: number): string[] {
   }
   if (current) lines.push(current);
   return lines;
+}
+
+interface ColumnWidths {
+  nameWidth: number;
+  hrgWidth: number;
+  qtyWidth: number;
+  totalWidth: number;
+}
+
+// Minimal supaya nama barang tetap kebaca meski kertas 58mm & angkanya besar.
+const MIN_NAME_WIDTH = 8;
+// Jarak minimum antar kolom angka, biar tidak nempel satu sama lain.
+const COLUMN_GAP = 1;
+
+/**
+ * Hitung lebar kolom Barang/Hrg/Qty/Total berdasarkan isi nota ini sendiri
+ * (bukan lebar tetap), supaya nama barang, harga, qty, dan total selalu
+ * muat dalam SATU baris walau di kertas 58mm (32 karakter).
+ */
+function computeColumnWidths(nota: Nota, charWidth: number): ColumnWidths {
+  let maxHrgLen = "Hrg".length;
+  let maxQtyLen = "Qty".length;
+  let maxTotalLen = "Total".length;
+
+  for (const item of nota.items) {
+    const priceStr = formatRupiah(item.price).replace("Rp ", "");
+    const qtyStr = `x${item.qty}`;
+    const totalStr = formatRupiah(item.totalOverride ?? item.price * item.qty).replace("Rp ", "");
+    maxHrgLen = Math.max(maxHrgLen, priceStr.length);
+    maxQtyLen = Math.max(maxQtyLen, qtyStr.length);
+    maxTotalLen = Math.max(maxTotalLen, totalStr.length);
+  }
+  maxTotalLen = Math.max(maxTotalLen, formatRupiah(nota.total).replace("Rp ", "").length);
+
+  let hrgWidth = maxHrgLen + COLUMN_GAP;
+  let qtyWidth = maxQtyLen + COLUMN_GAP;
+  let totalWidth = maxTotalLen + COLUMN_GAP;
+  let nameWidth = charWidth - hrgWidth - qtyWidth - totalWidth;
+
+  // Kolom angka + jarak antar-kolom kebesaran sampai nama kepepet? Lepas dulu jaraknya.
+  if (nameWidth < MIN_NAME_WIDTH) {
+    hrgWidth = maxHrgLen;
+    qtyWidth = maxQtyLen;
+    totalWidth = maxTotalLen;
+    nameWidth = charWidth - hrgWidth - qtyWidth - totalWidth;
+  }
+
+  // Masih kurang juga (kertas sangat sempit / angka sangat besar)? Kolom Total
+  // dikorbankan duluan karena paling longgar, baru Harga — sampai nama minimal kebaca.
+  while (nameWidth < MIN_NAME_WIDTH && (totalWidth > 4 || hrgWidth > 4)) {
+    if (totalWidth > 4) totalWidth -= 1;
+    else if (hrgWidth > 4) hrgWidth -= 1;
+    nameWidth = charWidth - hrgWidth - qtyWidth - totalWidth;
+  }
+
+  nameWidth = Math.max(nameWidth, 4);
+  return { nameWidth, hrgWidth, qtyWidth, totalWidth };
+}
+
+/**
+ * Muat teks ke lebar kolom tertentu. Kalau kepanjangan dan `truncateMark` aktif,
+ * dipotong lalu diberi tanda "." di ujung supaya kelihatan bahwa nama itu terpotong
+ * (nama barang yang sangat panjang di kertas 58mm memang tidak akan pernah muat penuh
+ * dalam satu baris — itu batas fisik kertas, bukan bug).
+ */
+function fitColumn(text: string, width: number, truncateMark = false): string {
+  if (text.length > width) {
+    if (truncateMark && width > 1) return text.slice(0, width - 1) + ".";
+    return text.slice(0, width);
+  }
+  return text.padEnd(width, " ");
 }
 
 /**
@@ -86,20 +147,26 @@ export function buildReceiptLines(nota: Nota, settings: Settings): ReceiptLine[]
   }
   push(divider, "left");
 
-  const hrgWidth = 7;
-  const qtyWidth = 5;
-  const totalWidth = 10;
-  const nameWidth = charWidth - hrgWidth - qtyWidth - totalWidth;
+  const { nameWidth, hrgWidth, qtyWidth, totalWidth } = computeColumnWidths(nota, charWidth);
 
-  push(padColumns(["Barang", "Hrg", "Qty", "Total"], [nameWidth, hrgWidth, qtyWidth, totalWidth]), "left");
+  push(
+    fitColumn("Barang", nameWidth) +
+      fitColumn("Hrg", hrgWidth) +
+      fitColumn("Qty", qtyWidth) +
+      fitColumn("Total", totalWidth),
+    "left"
+  );
   push(divider, "left");
 
   for (const item of nota.items) {
-    wrapText(item.name, charWidth).forEach((l) => push(l, "left"));
     const priceStr = formatRupiah(item.price).replace("Rp ", "");
+    const qtyStr = `x${item.qty}`;
     const totalStr = formatRupiah(item.totalOverride ?? item.price * item.qty).replace("Rp ", "");
     push(
-      padColumns(["", priceStr, `x${item.qty}`, totalStr], [nameWidth, hrgWidth, qtyWidth, totalWidth]),
+      fitColumn(item.name, nameWidth, true) +
+        fitColumn(priceStr, hrgWidth) +
+        fitColumn(qtyStr, qtyWidth) +
+        fitColumn(totalStr, totalWidth),
       "left"
     );
   }
@@ -107,7 +174,10 @@ export function buildReceiptLines(nota: Nota, settings: Settings): ReceiptLine[]
   push(divider, "left");
   const totalValueStr = formatRupiah(nota.total).replace("Rp ", "");
   push(
-    padColumns(["TOTAL", "", "", totalValueStr], [nameWidth, hrgWidth, qtyWidth, totalWidth]),
+    fitColumn("TOTAL", nameWidth) +
+      fitColumn("", hrgWidth) +
+      fitColumn("", qtyWidth) +
+      fitColumn(totalValueStr, totalWidth),
     "left",
     true
   );

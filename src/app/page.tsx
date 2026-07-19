@@ -12,6 +12,7 @@ import { useNota } from "@/hooks/useNota";
 import { useSettings } from "@/hooks/useSettings";
 import { useBluetoothPrinter } from "@/hooks/useBluetoothPrinter";
 import { showToast } from "@/lib/toast";
+import { parseRupiahInput } from "@/lib/utils";
 
 export default function NotaBaruPage() {
   const {
@@ -57,7 +58,7 @@ export default function NotaBaruPage() {
     isBusyRef.current = true;
     setSaving(true);
     try {
-      await saveNota();
+      await saveNota(parseRupiahInput(receivedText));
       showToast("Nota berhasil disimpan", "success");
       reset();
       setReceivedText("");
@@ -78,7 +79,7 @@ export default function NotaBaruPage() {
     if (isBusyRef.current) return;
     isBusyRef.current = true;
     try {
-      const saved = await saveNota();
+      const saved = await saveNota(parseRupiahInput(receivedText));
       const ok = await print(saved, settings);
       if (ok) {
         showToast("Nota berhasil dicetak", "success");

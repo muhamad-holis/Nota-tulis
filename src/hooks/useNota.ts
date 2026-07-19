@@ -53,29 +53,33 @@ export function useNota() {
     [items]
   );
 
-  const saveNota = useCallback(async () => {
-    if (validItems.length === 0) {
-      throw new Error("Nota masih kosong.");
-    }
-    const number = await nextNotaNumber();
-    const now = Date.now();
-    const uuid = crypto.randomUUID();
-    const nota = {
-      uuid,
-      number,
-      customerName: customerName.trim() || undefined,
-      date: now,
-      items: validItems,
-      total: validItems.reduce((sum, item) => sum + (item.totalOverride ?? item.price * item.qty), 0),
-      updatedAt: now,
-    };
-    const id = await db.notas.add(nota);
-    enqueueSync("notas", uuid);
-    learnProductsFromItems(validItems).catch((err) =>
-      console.error("Gagal mempelajari nama/harga barang:", err)
-    );
-    return { ...nota, id };
-  }, [validItems, customerName]);
+  const saveNota = useCallback(
+    async (bayarTunai?: number) => {
+      if (validItems.length === 0) {
+        throw new Error("Nota masih kosong.");
+      }
+      const number = await nextNotaNumber();
+      const now = Date.now();
+      const uuid = crypto.randomUUID();
+      const nota = {
+        uuid,
+        number,
+        customerName: customerName.trim() || undefined,
+        date: now,
+        items: validItems,
+        total: validItems.reduce((sum, item) => sum + (item.totalOverride ?? item.price * item.qty), 0),
+        bayarTunai: bayarTunai && bayarTunai > 0 ? bayarTunai : undefined,
+        updatedAt: now,
+      };
+      const id = await db.notas.add(nota);
+      enqueueSync("notas", uuid);
+      learnProductsFromItems(validItems).catch((err) =>
+        console.error("Gagal mempelajari nama/harga barang:", err)
+      );
+      return { ...nota, id };
+    },
+    [validItems, customerName]
+  );
 
   return {
     items,

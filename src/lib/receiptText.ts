@@ -191,6 +191,24 @@ export function buildReceiptLines(nota: Nota, settings: Settings): ReceiptLine[]
   );
   push(divider, "left");
 
+  // Baris Bayar Tunai & Kembali hanya muncul kalau kasir memang mengisi kalkulator
+  // kembalian sebelum cetak. Rata kanan mepet tepi kertas, sama seperti baris TOTAL.
+  if (nota.bayarTunai && nota.bayarTunai > 0) {
+    const bayarStr = formatRupiah(nota.bayarTunai).replace("Rp ", "");
+    const bayarLabelWidth = Math.max("Bayar Tunai".length, charWidth - bayarStr.length);
+    push(fitLeft("Bayar Tunai", bayarLabelWidth) + fitRight(bayarStr, charWidth - bayarLabelWidth), "left");
+
+    const selisih = nota.bayarTunai - nota.total;
+    const kembaliLabel = selisih < 0 ? "Kurang" : "Kembali";
+    const kembaliStr = formatRupiah(Math.abs(selisih)).replace("Rp ", "");
+    const kembaliLabelWidth = Math.max(kembaliLabel.length, charWidth - kembaliStr.length);
+    push(
+      fitLeft(kembaliLabel, kembaliLabelWidth) + fitRight(kembaliStr, charWidth - kembaliLabelWidth),
+      "left"
+    );
+    push(divider, "left");
+  }
+
   if (settings.footerText) {
     settings.footerText.split("\n").forEach((l) => {
       wrapText(l, charWidth).forEach((wrapped) => push(wrapped, "center"));

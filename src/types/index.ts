@@ -24,6 +24,7 @@ export interface Nota {
   date: number;
   items: NotaItem[];
   total: number;
+  bayarTunai?: number;
   updatedAt?: number;
 }
 

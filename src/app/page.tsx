@@ -5,6 +5,7 @@ import { Header } from "@/components/layout/Header";
 import { BottomNav } from "@/components/layout/BottomNav";
 import { NotaTable } from "@/components/nota/NotaTable";
 import { TotalBar } from "@/components/nota/TotalBar";
+import { KembalianCalculator } from "@/components/nota/KembalianCalculator";
 import { ActionButtons } from "@/components/nota/ActionButtons";
 import { Input } from "@/components/ui/Input";
 import { useNota } from "@/hooks/useNota";
@@ -28,6 +29,7 @@ export default function NotaBaruPage() {
   const settings = useSettings();
   const { print, printing, isSupported } = useBluetoothPrinter();
   const [saving, setSaving] = useState(false);
+  const [receivedText, setReceivedText] = useState("");
   const isBusyRef = useRef(false);
 
   function handleEnterName(id: string) {
@@ -58,6 +60,7 @@ export default function NotaBaruPage() {
       await saveNota();
       showToast("Nota berhasil disimpan", "success");
       reset();
+      setReceivedText("");
     } catch (err) {
       showToast(err instanceof Error ? err.message : "Gagal menyimpan nota", "error");
     } finally {
@@ -80,6 +83,7 @@ export default function NotaBaruPage() {
       if (ok) {
         showToast("Nota berhasil dicetak", "success");
         reset();
+        setReceivedText("");
       } else {
         showToast("Gagal mencetak. Cek koneksi printer.", "error");
       }
@@ -92,6 +96,7 @@ export default function NotaBaruPage() {
 
   function handleNewNota() {
     reset();
+    setReceivedText("");
     showToast("Nota baru dibuat", "info");
   }
 
@@ -119,6 +124,11 @@ export default function NotaBaruPage() {
           onEnterQty={handleEnterQty}
         />
         <TotalBar total={total} />
+        <KembalianCalculator
+          total={total}
+          receivedText={receivedText}
+          onReceivedTextChange={setReceivedText}
+        />
       </main>
 
       <div className="sticky bottom-0 z-20 border-t border-slate-100 bg-slate-50/95 p-4 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] backdrop-blur">

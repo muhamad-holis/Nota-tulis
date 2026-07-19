@@ -1,11 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { Upload } from "lucide-react";
 import { Header } from "@/components/layout/Header";
 import { BottomNav } from "@/components/layout/BottomNav";
-import { Button } from "@/components/ui/Button";
-import { SettingsSection } from "@/components/pengaturan/SettingsSection";
 import { StoreInfoSection } from "@/components/pengaturan/StoreInfoSection";
 import { ReceiptTextSection } from "@/components/pengaturan/ReceiptTextSection";
 import { PrinterSettingsSection } from "@/components/pengaturan/PrinterSettingsSection";
@@ -13,13 +10,11 @@ import { BackupRestoreSection } from "@/components/pengaturan/BackupRestoreSecti
 import { AboutSection } from "@/components/pengaturan/AboutSection";
 import { SyncSection } from "@/components/pengaturan/SyncSection";
 import { DangerZoneSection } from "@/components/pengaturan/DangerZoneSection";
-import { ImportDialog } from "@/components/produk/ImportDialog";
 import { useSettings, updateSettings } from "@/hooks/useSettings";
 import type { Settings } from "@/types";
 
 export default function PengaturanPage() {
   const settings = useSettings();
-  const [importOpen, setImportOpen] = useState(false);
 
   async function handleUpdate(patch: Partial<Settings>) {
     if (!settings?.id) return;
@@ -37,15 +32,6 @@ export default function PengaturanPage() {
             <ReceiptTextSection settings={settings} onUpdate={handleUpdate} />
             <PrinterSettingsSection settings={settings} onUpdate={handleUpdate} />
 
-            <SettingsSection title="Import Produk">
-              <p className="mb-3 text-xs text-slate-400">
-                Import daftar produk dari file CSV atau Excel (.xlsx).
-              </p>
-              <Button variant="outline" size="sm" onClick={() => setImportOpen(true)}>
-                <Upload size={14} /> Import dari Spreadsheet
-              </Button>
-            </SettingsSection>
-
             <SyncSection />
             <BackupRestoreSection />
             <DangerZoneSection />
@@ -57,7 +43,6 @@ export default function PengaturanPage() {
       </main>
 
       <BottomNav />
-      <ImportDialog open={importOpen} onClose={() => setImportOpen(false)} />
     </div>
   );
 }

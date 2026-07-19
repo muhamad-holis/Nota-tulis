@@ -5,6 +5,7 @@ import { db, nextNotaNumber } from "@/database/schema";
 import type { NotaItem } from "@/types";
 import { generateItemId } from "@/lib/utils";
 import { enqueueSync } from "@/lib/sync";
+import { learnProductsFromItems } from "@/hooks/useProducts";
 
 function emptyRow(): NotaItem {
   return { id: generateItemId(), name: "", price: 0, qty: 1 };
@@ -70,6 +71,9 @@ export function useNota() {
     };
     const id = await db.notas.add(nota);
     enqueueSync("notas", uuid);
+    learnProductsFromItems(validItems).catch((err) =>
+      console.error("Gagal mempelajari nama/harga barang:", err)
+    );
     return { ...nota, id };
   }, [validItems, customerName]);
 

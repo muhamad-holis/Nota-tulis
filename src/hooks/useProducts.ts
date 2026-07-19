@@ -3,19 +3,7 @@
 import { useLiveQuery } from "dexie-react-hooks";
 import { db } from "@/database/schema";
 import { enqueueSync } from "@/lib/sync";
-import type { Product } from "@/types";
-import type { ParsedProductRow } from "@/services/csvService";
-
-export function useProducts(search = "") {
-  const products = useLiveQuery(async () => {
-    const all = await db.products.orderBy("name").toArray();
-    if (!search.trim()) return all;
-    const q = search.trim().toLowerCase();
-    return all.filter((p) => p.name.toLowerCase().includes(q));
-  }, [search]);
-
-  return products ?? [];
-}
+import type { NotaItem } from "@/types";
 
 export function useProductSuggestions(query: string, limit = 5) {
   const suggestions = useLiveQuery(async () => {
@@ -36,42 +24,33 @@ export function useProductSuggestions(query: string, limit = 5) {
   return suggestions ?? [];
 }
 
-export async function addProduct(data: Omit<Product, "id" | "createdAt" | "updatedAt" | "uuid">) {
+/**
+ * "Belajar" nama & harga barang dari nota yang baru disimpan/diedit, supaya lain kali
+ * mengetik nama yang sama, harganya otomatis tersaran (autocomplete) — jadi tidak perlu
+ * ketik ulang dari nol dan menghindari typo harga. Tidak ada halaman kelola produk manual;
+ * daftar ini murni terbentuk sendiri dari kebiasaan nulis nota sehari-hari.
+ *
+ * Dipanggil sebagai fire-and-forget (tidak di-await) di pemanggilnya, supaya proses
+ * belajar di latar belakang ini tidak pernah bikin simpan/cetak nota jadi lambat atau gagal.
+ */
+export async function learnProductsFromItems(items: NotaItem[]): Promise<void> {
   const now = Date.now();
-  const uuid = crypto.randomUUID();
-  const id = await db.products.add({ ...data, uuid, createdAt: now, updatedAt: now });
-  enqueueSync("products", uuid);
-  return id;
-}
+  for (const item of items) {
+    const name = item.name.trim();
+    if (!name || !(item.price > 0)) continue;
 
-export async function updateProduct(id: number, data: Partial<Product>) {
-  const result = await db.products.update(id, { ...data, updatedAt: Date.now() });
-  const p = await db.products.get(id);
-  if (p?.uuid) enqueueSync("products", p.uuid);
-  return result;
-}
+    const nameLower = name.toLowerCase();
+    const existing = await db.products.filter((p) => p.name.trim().toLowerCase() === nameLower).first();
 
-export async function deleteProduct(id: number) {
-  const p = await db.products.get(id);
-  const result = await db.products.delete(id);
-  if (p?.uuid) enqueueSync("products", p.uuid, "delete");
-  return result;
-}
-
-export async function importProducts(rows: ParsedProductRow[], mode: "add" | "replace") {
-  const now = Date.now();
-  await db.transaction("rw", db.products, async () => {
-    if (mode === "replace") {
-      await db.products.clear();
+    if (existing) {
+      // Harga sama seperti terakhir kali → tidak perlu nulis ulang ke DB / antre sync.
+      if (existing.price === item.price) continue;
+      await db.products.update(existing.id!, { price: item.price, updatedAt: now });
+      if (existing.uuid) enqueueSync("products", existing.uuid);
+    } else {
+      const uuid = crypto.randomUUID();
+      await db.products.add({ name, price: item.price, createdAt: now, updatedAt: now, uuid });
+      enqueueSync("products", uuid);
     }
-    await db.products.bulkAdd(
-      rows.map((r) => ({
-        name: r.name,
-        price: r.price,
-        category: r.category,
-        createdAt: now,
-        updatedAt: now,
-      }))
-    );
-  });
+  }
 }

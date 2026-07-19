@@ -2,12 +2,11 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { FileText, Package, Settings, History } from "lucide-react";
+import { FileText, Settings, History } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const NAV_ITEMS = [
   { href: "/", label: "Nota", icon: FileText },
-  { href: "/produk", label: "Produk", icon: Package },
   { href: "/riwayat", label: "Riwayat", icon: History },
   { href: "/pengaturan", label: "Pengaturan", icon: Settings },
 ];

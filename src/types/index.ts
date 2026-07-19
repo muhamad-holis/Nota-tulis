@@ -47,5 +47,3 @@ export interface Settings {
   printer: PrinterDevice | null;
   lastNotaNumber: number;
 }
-
-export type ImportMode = "add" | "replace";

@@ -7,7 +7,7 @@ import { BottomNav } from "@/components/layout/BottomNav";
 import { Card } from "@/components/ui/Card";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { useReport, type ReportPeriod } from "@/hooks/useReport";
-import { formatRupiah, cn } from "@/lib/utils";
+import { formatRupiah, formatQty, cn } from "@/lib/utils";
 
 const PERIODS: { value: ReportPeriod; label: string }[] = [
   { value: "today", label: "Hari Ini" },
@@ -94,7 +94,7 @@ export default function LaporanPage() {
                       </span>
                       <div className="min-w-0 flex-1">
                         <p className="truncate text-sm text-slate-700">{item.name}</p>
-                        <p className="text-xs text-slate-400">{item.qty} terjual</p>
+                        <p className="text-xs text-slate-400">{formatQty(item.qty)} terjual</p>
                       </div>
                       <span className="shrink-0 text-sm font-medium text-slate-600">
                         {formatRupiah(item.total)}

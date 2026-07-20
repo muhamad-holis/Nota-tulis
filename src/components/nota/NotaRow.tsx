@@ -5,7 +5,7 @@ import type { KeyboardEvent } from "react";
 import { motion, useAnimation } from "framer-motion";
 import { X, Trash2 } from "lucide-react";
 import type { NotaItem, Product } from "@/types";
-import { parseRupiahInput } from "@/lib/utils";
+import { parseQtyInput, parseRupiahInput } from "@/lib/utils";
 import { ProductAutocomplete } from "./ProductAutocomplete";
 
 interface NotaRowProps {
@@ -30,6 +30,7 @@ export function NotaRow({
   const computedTotal = item.price * item.qty;
   const effectiveTotal = item.totalOverride ?? computedTotal;
   const [totalText, setTotalText] = useState(effectiveTotal ? String(effectiveTotal) : "");
+  const [qtyText, setQtyText] = useState(item.qty ? String(item.qty).replace(".", ",") : "");
 
   useEffect(() => {
     setTotalText(effectiveTotal ? String(effectiveTotal) : "");
@@ -46,8 +47,11 @@ export function NotaRow({
   }
 
   function handleQtyChange(text: string) {
-    const qty = parseInt(text.replace(/[^0-9]/g, ""), 10) || 0;
-    onUpdate({ qty, totalOverride: undefined });
+    // Izinkan mengetik koma/titik desimal (mis. "0,5" untuk setengah satuan)
+    // tanpa langsung diformat ulang saat masih setengah mengetik.
+    const cleaned = text.replace(/[^0-9.,]/g, "");
+    setQtyText(cleaned);
+    onUpdate({ qty: parseQtyInput(cleaned), totalOverride: undefined });
   }
 
   function handleTotalChange(text: string) {
@@ -119,15 +123,22 @@ export function NotaRow({
 
         <input
           id={`qty-input-${item.id}`}
-          value={item.qty === 0 ? "" : item.qty}
+          value={qtyText}
           onChange={(e) => handleQtyChange(e.target.value)}
           onFocus={(e) => e.target.select()}
           onBlur={() => {
-            if (!item.qty) onUpdate({ qty: 1 });
+            if (!item.qty) {
+              setQtyText("1");
+              onUpdate({ qty: 1 });
+            } else {
+              // Rapikan tampilan setelah selesai mengetik, mis. "0," -> "0,5" -> "0,5".
+              setQtyText(String(item.qty).replace(".", ","));
+            }
           }}
           onKeyDown={handleQtyKeyDown}
-          inputMode="numeric"
+          inputMode="decimal"
           placeholder="1"
+          title="Bisa desimal untuk beli setengah/seperempat, mis. 0,5"
           className="w-full rounded-lg bg-slate-50 px-1 py-1.5 text-center text-sm text-slate-700 outline-none focus:ring-2 focus:ring-brand-100"
         />
 

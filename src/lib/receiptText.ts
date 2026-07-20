@@ -1,5 +1,5 @@
 import type { Nota, Settings } from "@/types";
-import { formatDateTime, formatRupiah } from "@/lib/utils";
+import { formatDateTime, formatQty, formatRupiah } from "@/lib/utils";
 
 export interface ReceiptLine {
   text: string;
@@ -69,7 +69,7 @@ function computeColumnWidths(nota: Nota, charWidth: number): ColumnWidths {
 
   for (const item of nota.items) {
     const priceStr = formatRupiah(item.price).replace("Rp ", "");
-    const qtyStr = `x${item.qty}`;
+    const qtyStr = `x${formatQty(item.qty)}`;
     const totalStr = formatRupiah(item.totalOverride ?? item.price * item.qty).replace("Rp ", "");
     maxHrgLen = Math.max(maxHrgLen, priceStr.length);
     maxQtyLen = Math.max(maxQtyLen, qtyStr.length);
@@ -166,7 +166,7 @@ export function buildReceiptLines(nota: Nota, settings: Settings): ReceiptLine[]
 
   for (const item of nota.items) {
     const priceStr = formatRupiah(item.price).replace("Rp ", "");
-    const qtyStr = `x${item.qty}`;
+    const qtyStr = `x${formatQty(item.qty)}`;
     const totalStr = formatRupiah(item.totalOverride ?? item.price * item.qty).replace("Rp ", "");
     push(
       fitLeft(item.name, nameWidth, true) +
